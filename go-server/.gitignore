@@ -1,5 +1,5 @@
-bin
-
+/bin
+/tmp
 # Serverless directories
-.serverless
-*.env
+#.serverless
+/config.env

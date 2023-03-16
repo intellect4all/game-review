@@ -11,7 +11,6 @@ import (
 	"golang.org/x/crypto/bcrypt"
 	"math/rand"
 	"time"
-	"unicode"
 )
 
 type MongoRepository struct {
@@ -28,37 +27,10 @@ func NewMongoRepository(mongoDbClient *mongo.Client) *MongoRepository {
 
 func (m *MongoRepository) CreateNewUser(ctx context.Context, userCredential *UserCredential) error {
 
-	valRes := m.validate.Struct(userCredential)
+	_, err := m.mongoDbClient.Database("test").Collection("users").InsertOne(ctx, userCredential)
 
-	if valRes != nil {
-		return valRes
-	}
-
-	// check if user already exists
-	var userCredentialFromDb UserCredential
-
-	err := m.mongoDbClient.Database("test").Collection("users").FindOne(ctx, bson.D{{"email", userCredential.Id}}).Decode(&userCredentialFromDb)
-
-	// check if the error is a ErrNoDocuments error
-	if err == nil {
-		return ErrUserAlreadyExists
-	}
-
-	if ok, errMessage := isPasswordValid(userCredential.Password); !ok {
-		return errors.New("Invalid Password: " + errMessage)
-	}
-
-	// encrypt password
-	hashedPassword, err := encryptPassword(userCredential.Password)
 	if err != nil {
-		return err
-	}
-
-	userCredential.Password = hashedPassword
-
-	_, err = m.mongoDbClient.Database("test").Collection("users").InsertOne(ctx, userCredential)
-	if err != nil {
-		return err
+		return UnknownError
 	}
 
 	return nil
@@ -106,11 +78,11 @@ func (m *MongoRepository) DeleteUser(ctx context.Context, userId UserID) error {
 	return nil
 }
 
-func (m *MongoRepository) isValidPassword(password string, encryptedPassword string) bool {
-	return isCorrectPassword(password, encryptedPassword)
-}
+//func (m *MongoRepository) isCorrectPassword(password string, encryptedPassword string) bool {
+//	return isCorrectPassword(password, encryptedPassword)
+//}
 
-func (m *MongoRepository) CreateVerificationOTP(ctx context.Context, id *UserID) (string, error) {
+func (m *MongoRepository) CreateOTP(ctx context.Context, id *UserID) (string, error) {
 	otpData := getOTPData(id)
 
 	fmt.Printf("otpData %v \n", otpData)
@@ -127,39 +99,14 @@ func (m *MongoRepository) CreateVerificationOTP(ctx context.Context, id *UserID)
 	return otpID, nil
 }
 
-func (m *MongoRepository) VerifyUser(ctx context.Context, requestData *VerifyUserRequest) error {
+func (m *MongoRepository) VerifyUser(ctx context.Context, requestData *OtpCheckData) error {
 	userCred, err := m.GetUserCredential(ctx, UserID(requestData.Email))
 	if err != nil {
 		return ErrUserNotFound
 	}
-	// convert tokenID to objectID
-	id, _ := primitive.ObjectIDFromHex(requestData.TokenID)
 
 	// check if otp code is valid
-
-	var otpData OtpData
-	res := m.mongoDbClient.Database("test").Collection("otpCodes").FindOne(ctx, bson.M{"_id": id}).Decode(&otpData)
-
-	if res != nil {
-		return ErrInvalidOTP
-	}
-
-	if otpData.Used {
-		return ErrOTPUsed
-	}
-
-	if otpData.ExpirationTime.Before(time.Now()) {
-		return ErrOTPExpired
-	}
-
-	if otpData.OtpCode != requestData.OTPCode {
-		return ErrInvalidOTP
-	}
-
-	// update otp code to used
-	_, err = m.mongoDbClient.Database("test").Collection("otpCodes").UpdateOne(ctx, bson.M{"_id": id}, bson.M{"$set": bson.M{"used": true}})
-
-	if err != nil {
+	if _, err := m.VerifyOTP(ctx, requestData); err != nil {
 		return err
 	}
 
@@ -171,6 +118,79 @@ func (m *MongoRepository) VerifyUser(ctx context.Context, requestData *VerifyUse
 	}
 
 	return nil
+}
+
+func (m *MongoRepository) ChangePassword(ctx context.Context, f *ForgetAndResetPasswordRequest) error {
+	_, err := m.GetUserCredential(ctx, UserID(f.Email))
+	if err != nil {
+		return ErrUserNotFound
+	}
+
+	// check if otp code is valid
+	otpData := OtpCheckData{
+		Email:   f.Email,
+		TokenID: f.TokenID,
+		OTPCode: f.OTPCode,
+	}
+	if _, err := m.VerifyOTP(ctx, &otpData); err != nil {
+		return err
+	}
+
+	if ok, errMessage := isPasswordValid(f.Password); !ok {
+		return errors.New("Invalid Password: " + errMessage)
+	}
+
+	if f.Password != f.ConfirmPassword {
+		return ErrPasswordMismatch
+	}
+
+	// encrypt password
+	hashedPassword, err := encryptPassword(f.Password)
+	if err != nil {
+		return err
+	}
+
+	// update user password
+	_, err = m.mongoDbClient.Database("test").Collection("users").UpdateOne(ctx, bson.M{"email": f.Email}, bson.M{"$set": bson.M{"password": hashedPassword}})
+
+	if err != nil {
+		return UnknownError
+	}
+
+	return nil
+}
+
+func (m *MongoRepository) VerifyOTP(ctx context.Context, requestData *OtpCheckData) (bool, error) {
+	// convert tokenID to objectID
+	id, _ := primitive.ObjectIDFromHex(requestData.TokenID)
+
+	var otpData OtpData
+	res := m.mongoDbClient.Database("test").Collection("otpCodes").FindOne(ctx, bson.M{"_id": id}).Decode(&otpData)
+
+	if res != nil {
+		return false, ErrInvalidOTP
+	}
+
+	if otpData.Used {
+		return false, ErrOTPUsed
+	}
+
+	if otpData.ExpirationTime.Before(time.Now()) {
+		return false, ErrOTPExpired
+	}
+
+	if otpData.OtpCode != requestData.OTPCode {
+		return false, ErrInvalidOTP
+	}
+
+	// update otp code to used
+	_, err := m.mongoDbClient.Database("test").Collection("otpCodes").UpdateOne(ctx, bson.M{"_id": id}, bson.M{"$set": bson.M{"used": true}})
+
+	if err != nil {
+		return false, UnknownError
+	}
+
+	return true, nil
 }
 
 type OtpData struct {
@@ -210,48 +230,4 @@ func encryptPassword(password string) (string, error) {
 	}
 
 	return string(hashedPassword), nil
-}
-
-func isCorrectPassword(password string, encryptedPassword string) bool {
-	err := bcrypt.CompareHashAndPassword([]byte(encryptedPassword), []byte(password))
-	if err != nil {
-		return false
-	}
-	return true
-}
-
-func isPasswordValid(password string) (bool, string) {
-	var (
-		upp, low, num, sym bool
-		tot                uint8
-		errorMessage       string
-	)
-
-	errorMessage = "Password must contain at least 8 characters, 1 uppercase, 1 lowercase, 1 number, and 1 symbol."
-
-	for _, char := range password {
-		switch {
-		case unicode.IsUpper(char):
-			upp = true
-			tot++
-		case unicode.IsLower(char):
-			low = true
-			tot++
-		case unicode.IsNumber(char):
-			num = true
-			tot++
-		case unicode.IsPunct(char) || unicode.IsSymbol(char):
-			sym = true
-			tot++
-		default:
-			errorMessage = "Password contains invalid characters. Only letters, numbers, and symbols are allowed."
-		}
-	}
-
-	if !upp || !low || !num || !sym || tot < 8 {
-
-		return false, errorMessage
-	}
-
-	return true, ""
 }
