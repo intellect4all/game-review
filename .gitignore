@@ -1,2 +1,7 @@
 */bin
+
 *.env
+*.key
+*.pem
+*.pem.pub
+*.p12

@@ -3,3 +3,11 @@
 # Serverless directories
 #.serverless
 /config.env
+
+**.env
+
+# ignore signing keys
+*.key
+*.pem
+*.pem.pub
+*.p12
