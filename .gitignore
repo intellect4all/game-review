@@ -5,3 +5,5 @@
 *.pem
 *.pem.pub
 *.p12
+go-server/key.pem
+go-server/key.pem.pub
