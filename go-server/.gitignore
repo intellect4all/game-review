@@ -1,13 +1,15 @@
 /bin
 /tmp
+/build
 # Serverless directories
 #.serverless
-/config.env
+/lamda_env.yml
 
-**.env
+lamda_env.yml
 
 # ignore signing keys
 *.key
 *.pem
 *.pem.pub
 *.p12
+serverless.yml

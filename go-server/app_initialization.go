@@ -3,10 +3,11 @@ package main
 import (
 	"context"
 	"fmt"
-	"github.com/spf13/viper"
+	"github.com/joho/godotenv"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"go.mongodb.org/mongo-driver/mongo/readpref"
+	"os"
 
 	"log"
 	"time"
@@ -26,17 +27,14 @@ type InitializationResponse struct {
 }
 
 func InitializationHandler() (*InitializationResponse, error) {
-	setViperDefaults()
+	loadEnvVariables()
+
 	response := &InitializationResponse{}
 
-	if err := viper.ReadInConfig(); err != nil {
-		panic(fmt.Errorf("Fatal error config file: %s \n", err))
-	}
-
-	shouldRunLocally := viper.GetString(ExecutionMode) == "local"
+	shouldRunLocally := os.Getenv(ExecutionMode) == "local"
 	response.environmentIsLocal = shouldRunLocally
 
-	mongoURI := viper.GetString(MongoDBURI)
+	mongoURI := os.Getenv(MongoDBURI)
 
 	mongoClient, err := getMongoClient(mongoURI)
 	if err != nil {
@@ -66,13 +64,15 @@ func getMongoClient(uri string) (*mongo.Client, error) {
 		log.Fatal(err)
 	}
 
+	log.Println("mongo connected", uri, "")
+
 	return client, nil
 }
 
-func setViperDefaults() {
-	viper.SetDefault(ExecutionMode, "local")
-	viper.AddConfigPath(".") // optionally look for config in the working directory
-}
+func loadEnvVariables() {
+	err := godotenv.Load()
+	if err != nil {
+		fmt.Printf("unable to load env")
+	}
 
-//useinvoicewise
-//1ONzze7cQOCGq9HS
+}

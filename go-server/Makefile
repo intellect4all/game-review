@@ -2,4 +2,4 @@ run:
 	go run main.go
 
 build:
-	go build
+	env GOOS=linux GOARCH=amd64	go build -o build/goServerlessLambda .

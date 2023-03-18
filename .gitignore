@@ -1,4 +1,5 @@
 */bin
+*/tmp
 
 *.env
 *.key
@@ -7,3 +8,5 @@
 *.p12
 go-server/key.pem
 go-server/key.pem.pub
+/go-server/serverless.yml
+/go-server/lamda_env.yml

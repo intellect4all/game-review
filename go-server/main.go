@@ -2,9 +2,6 @@ package main
 
 import (
 	"context"
-	"github.com/aws/aws-lambda-go/events"
-	"github.com/aws/aws-lambda-go/lambda"
-	fiberAdapter "github.com/awslabs/aws-lambda-go-api-proxy/fiber"
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/logger"
 	"github.com/gofiber/fiber/v2/middleware/recover"
@@ -12,9 +9,11 @@ import (
 	"os"
 )
 
-var fiberLambda *fiberAdapter.FiberLambda
-
 func init() {
+
+}
+
+func main() {
 	// get the environment variables and initialize the application
 	initResponse, err := InitializationHandler()
 	if err != nil {
@@ -30,17 +29,18 @@ func init() {
 
 	apiGroup := app.Group("/api/")
 	ctx := context.Background()
-	ctx = context.WithValue(ctx, "apiVersion", "v1")
+	ctx = context.WithValue(ctx, "apiVersion", "/v1")
 
+	app.Get("/", func(ctx *fiber.Ctx) error {
+		return ctx.SendString("Hello Here")
+	})
 	// register a ping route
-	apiGroup.Get("v1/ping", func(c *fiber.Ctx) error {
+	apiGroup.Get("/v1/ping", func(c *fiber.Ctx) error {
 		return c.SendString("pong")
 	})
 
-	authentication.Register(initResponse.mongoDbClient, ctx, apiGroup)
-
-	if !initResponse.environmentIsLocal {
-		fiberLambda = fiberAdapter.New(app)
+	err = authentication.Register(initResponse.mongoDbClient, ctx, apiGroup)
+	if err != nil {
 		return
 	}
 
@@ -48,17 +48,4 @@ func init() {
 	if err != nil {
 		os.Exit(1)
 	}
-}
-
-func main() {
-
-	if fiberLambda != nil {
-		lambda.Start(Handler)
-	}
-
-}
-
-func Handler(ctx context.Context, req events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
-	// If no name is provided in the HTTP request body, throw an error
-	return fiberLambda.ProxyWithContext(ctx, req)
 }
