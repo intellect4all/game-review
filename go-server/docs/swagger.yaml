@@ -1,0 +1,447 @@
+basePath: /
+definitions:
+  authentication.ForgetAndResetPasswordRequest:
+    properties:
+      confirmPassword:
+        minLength: 8
+        type: string
+      email:
+        type: string
+      otpCode:
+        type: string
+      password:
+        minLength: 8
+        type: string
+      tokenID:
+        type: string
+    required:
+    - confirmPassword
+    - email
+    - otpCode
+    - password
+    - tokenID
+    type: object
+  authentication.LoginRequest:
+    properties:
+      email:
+        type: string
+      password:
+        type: string
+    required:
+    - email
+    - password
+    type: object
+  authentication.LoginSuccessResponse:
+    properties:
+      jwt:
+        type: string
+      user:
+        $ref: '#/definitions/authentication.UserDetail'
+    type: object
+  authentication.OTPCreationSuccessResponse:
+    properties:
+      email:
+        type: string
+      otpId:
+        type: string
+    type: object
+  authentication.SignUpRequest:
+    properties:
+      email:
+        type: string
+      firstName:
+        type: string
+      lastName:
+        type: string
+      password:
+        type: string
+      phone:
+        type: string
+      role:
+        enum:
+        - user
+        - moderator
+        type: string
+    required:
+    - email
+    - firstName
+    - lastName
+    - password
+    - phone
+    - role
+    type: object
+  authentication.UserDetail:
+    properties:
+      firstName:
+        type: string
+      isVerified:
+        type: boolean
+      lastName:
+        type: string
+      phone:
+        type: string
+      role:
+        enum:
+        - user
+        - admin
+        - moderator
+        type: string
+    required:
+    - firstName
+    - lastName
+    - role
+    type: object
+  authentication.VerifyAccountRequest:
+    properties:
+      email:
+        type: string
+      otpCode:
+        type: string
+      tokenID:
+        type: string
+    required:
+    - email
+    - otpCode
+    - tokenID
+    type: object
+  main.JSONErrorRes:
+    properties:
+      error: {}
+      message:
+        type: string
+    type: object
+  main.JSONResult:
+    properties:
+      data: {}
+      message:
+        type: string
+    type: object
+host: localhost:3000
+info:
+  contact:
+    email: autolarry55@gmail.com
+    name: API Support
+    url: http://www.swagger.io/support
+  description: This is an Api Service for Cool Game Review Api.
+  license:
+    name: Apache 2.0
+    url: http://www.apache.org/licenses/LICENSE-2.0.html
+  termsOfService: http://swagger.io/terms/
+  title: Game Review API
+  version: "1.0"
+paths:
+  /api/v1/forgot-password/init/{email}:
+    post:
+      consumes:
+      - application/json
+      description: |-
+        An otp code is sent to the email if the user account existed.
+        An otp ID is returned, which must submitted alongside the otpCode sent to the mail to the Forgot password reset endpoint.
+      operationId: ForgotPasswordInit
+      parameters:
+      - description: Email address
+        in: path
+        name: email
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Success
+          schema:
+            allOf:
+            - $ref: '#/definitions/main.JSONResult'
+            - properties:
+                data:
+                  $ref: '#/definitions/authentication.OTPCreationSuccessResponse'
+              type: object
+        "404":
+          description: No Account Found
+          schema:
+            $ref: '#/definitions/main.JSONErrorRes'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/main.JSONErrorRes'
+      summary: Forget password endpoint
+      tags:
+      - Authentication
+  /api/v1/forgot-password/reset:
+    post:
+      consumes:
+      - application/json
+      description: The Endpoint resets the user password using the otp code sent to
+        the user's email
+      operationId: ResetPassword
+      parameters:
+      - description: OtpID data
+        in: body
+        name: ForgetAndResetPasswordRequest
+        required: true
+        schema:
+          $ref: '#/definitions/authentication.ForgetAndResetPasswordRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Success
+          schema:
+            allOf:
+            - $ref: '#/definitions/main.JSONResult'
+            - properties:
+                data:
+                  type: string
+              type: object
+        "400":
+          description: Bad request
+          schema:
+            $ref: '#/definitions/main.JSONErrorRes'
+        "404":
+          description: No Account Found
+          schema:
+            $ref: '#/definitions/main.JSONErrorRes'
+        "409":
+          description: User already verified
+          schema:
+            $ref: '#/definitions/main.JSONErrorRes'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/main.JSONErrorRes'
+      summary: Complete Forget password reset
+      tags:
+      - Authentication
+  /api/v1/login:
+    post:
+      consumes:
+      - application/json
+      description: Returns a signed JSON Web Token that can be used to talk to secured
+        endpoints
+      operationId: login
+      parameters:
+      - description: login request
+        in: body
+        name: loginRequest
+        required: true
+        schema:
+          $ref: '#/definitions/authentication.LoginRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: success
+          schema:
+            allOf:
+            - $ref: '#/definitions/main.JSONResult'
+            - properties:
+                data:
+                  $ref: '#/definitions/authentication.LoginSuccessResponse'
+              type: object
+        "400":
+          description: Bad request
+          schema:
+            $ref: '#/definitions/main.JSONErrorRes'
+        "404":
+          description: User not found
+          schema:
+            $ref: '#/definitions/main.JSONErrorRes'
+        "426":
+          description: Account is inactive
+          schema:
+            $ref: '#/definitions/main.JSONErrorRes'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/main.JSONErrorRes'
+      summary: Login endpoint for all users
+      tags:
+      - Authentication
+  /api/v1/ping:
+    get:
+      consumes:
+      - '*/*'
+      description: get the status of server.
+      operationId: ping
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Show the status of server.
+      tags:
+      - ping
+  /api/v1/signup:
+    post:
+      consumes:
+      - application/json
+      description: Creates a new User/Moderator on the system. The Moderator will
+        need to be manually activated by an existing admin
+      operationId: signup
+      parameters:
+      - description: signup request
+        in: body
+        name: signUpRequest
+        required: true
+        schema:
+          $ref: '#/definitions/authentication.SignUpRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Success
+          schema:
+            allOf:
+            - $ref: '#/definitions/main.JSONResult'
+            - properties:
+                data:
+                  type: string
+              type: object
+        "400":
+          description: Bad request
+          schema:
+            $ref: '#/definitions/main.JSONErrorRes'
+        "409":
+          description: User already exists
+          schema:
+            $ref: '#/definitions/main.JSONErrorRes'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/main.JSONErrorRes'
+      summary: Signup endpoint for all users and moderators
+      tags:
+      - Onboarding
+  /api/v1/verify-account/init/{email}:
+    post:
+      consumes:
+      - application/json
+      description: |-
+        An otp code is sent to the email if the user account existed.
+        An otp ID is returned, which must submitted alongside the otpCode sent to the mail to the VerifyAccount endpoint.
+      operationId: initVerifyAccount
+      parameters:
+      - description: Email address
+        in: path
+        name: email
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Success
+          schema:
+            allOf:
+            - $ref: '#/definitions/main.JSONResult'
+            - properties:
+                data:
+                  $ref: '#/definitions/authentication.OTPCreationSuccessResponse'
+              type: object
+        "404":
+          description: No Account Found
+          schema:
+            $ref: '#/definitions/main.JSONErrorRes'
+        "409":
+          description: User already verified
+          schema:
+            $ref: '#/definitions/main.JSONErrorRes'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/main.JSONErrorRes'
+      summary: Initiate user email verification
+      tags:
+      - Onboarding
+  /api/v1/verify-account/resend/{email}:
+    post:
+      consumes:
+      - application/json
+      description: |-
+        An otp code is sent to the email if the user account existed.
+        An otp ID is returned, which must submitted alongside the otpCode sent to the mail to the VerifyAccount endpoint.
+      operationId: ResendVerificationCode
+      parameters:
+      - description: Email address
+        in: path
+        name: email
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Success
+          schema:
+            allOf:
+            - $ref: '#/definitions/main.JSONResult'
+            - properties:
+                data:
+                  $ref: '#/definitions/authentication.OTPCreationSuccessResponse'
+              type: object
+        "404":
+          description: No Account Found
+          schema:
+            $ref: '#/definitions/main.JSONErrorRes'
+        "409":
+          description: User already verified
+          schema:
+            $ref: '#/definitions/main.JSONErrorRes'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/main.JSONErrorRes'
+      summary: Resend OTP code for account verification
+      tags:
+      - Onboarding
+  /api/v1/verify-account/verify:
+    post:
+      consumes:
+      - application/json
+      description: The Endpoint verifies the user account using the otp code sent
+        to the user's email
+      operationId: VerifyAccount
+      parameters:
+      - description: OtpID data
+        in: body
+        name: verifyAccountRequest
+        required: true
+        schema:
+          $ref: '#/definitions/authentication.VerifyAccountRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Success
+          schema:
+            allOf:
+            - $ref: '#/definitions/main.JSONResult'
+            - properties:
+                data:
+                  type: string
+              type: object
+        "400":
+          description: Bad request
+          schema:
+            $ref: '#/definitions/main.JSONErrorRes'
+        "404":
+          description: No Account Found
+          schema:
+            $ref: '#/definitions/main.JSONErrorRes'
+        "409":
+          description: User already verified
+          schema:
+            $ref: '#/definitions/main.JSONErrorRes'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/main.JSONErrorRes'
+      summary: Complete account verification
+      tags:
+      - Onboarding
+schemes:
+- http
+swagger: "2.0"

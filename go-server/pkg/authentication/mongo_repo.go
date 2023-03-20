@@ -1,14 +1,17 @@
 package authentication
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
 	"github.com/go-playground/validator/v10"
+	"go-server/pkg/notifications"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 	"golang.org/x/crypto/bcrypt"
+	"html/template"
 	"math/rand"
 	"time"
 )
@@ -96,10 +99,28 @@ func (m *MongoRepository) CreateOTP(ctx context.Context, id *UserID) (string, er
 
 	otpID := idd.Hex()
 
+	sendEmailToUser(otpData)
+
 	return otpID, nil
 }
 
-func (m *MongoRepository) VerifyUser(ctx context.Context, requestData *OtpCheckData) error {
+func sendEmailToUser(data *OtpData) {
+	fmt.Println("Sending email to user")
+	emailRequest := notifications.EmailRequest{
+		From:    "cool_game_rev.com",
+		To:      data.UserId,
+		Subject: "Your OTP Code",
+		Body:    GetHtmlTemplate(data),
+	}
+	err := notifications.SendEmail(
+		emailRequest,
+	)
+	if err != nil {
+		return
+	}
+}
+
+func (m *MongoRepository) VerifyUser(ctx context.Context, requestData *VerifyAccountRequest) error {
 	userCred, err := m.GetUserCredential(ctx, UserID(requestData.Email))
 	if err != nil {
 		return ErrUserNotFound
@@ -127,7 +148,7 @@ func (m *MongoRepository) ChangePassword(ctx context.Context, f *ForgetAndResetP
 	}
 
 	// check if otp code is valid
-	otpData := OtpCheckData{
+	otpData := VerifyAccountRequest{
 		Email:   f.Email,
 		TokenID: f.TokenID,
 		OTPCode: f.OTPCode,
@@ -160,7 +181,7 @@ func (m *MongoRepository) ChangePassword(ctx context.Context, f *ForgetAndResetP
 	return nil
 }
 
-func (m *MongoRepository) VerifyOTP(ctx context.Context, requestData *OtpCheckData) (bool, error) {
+func (m *MongoRepository) VerifyOTP(ctx context.Context, requestData *VerifyAccountRequest) (bool, error) {
 	// convert tokenID to objectID
 	id, _ := primitive.ObjectIDFromHex(requestData.TokenID)
 
@@ -230,4 +251,34 @@ func encryptPassword(password string) (string, error) {
 	}
 
 	return string(hashedPassword), nil
+}
+
+type OTPHtmlTemplate struct {
+	OTPCode   string
+	BrandName string
+	Address   string
+	State     string
+}
+
+func GetHtmlTemplate(data *OtpData) string {
+
+	tmplt, _ := template.ParseFiles("resources/templates/otp.html")
+
+	tmplData := OTPHtmlTemplate{
+		OTPCode:   data.OtpCode,
+		BrandName: "Cool Game",
+		Address:   "1234 Main St",
+		State:     "CA",
+	}
+
+	var tpl bytes.Buffer
+
+	err := tmplt.Execute(&tpl, tmplData)
+
+	if err != nil {
+		return ""
+	}
+
+	return tpl.String()
+
 }

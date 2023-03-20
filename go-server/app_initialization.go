@@ -22,17 +22,13 @@ const (
 )
 
 type InitializationResponse struct {
-	environmentIsLocal bool
-	mongoDbClient      *mongo.Client
+	MongoDbClient *mongo.Client
 }
 
 func InitializationHandler() (*InitializationResponse, error) {
 	loadEnvVariables()
 
 	response := &InitializationResponse{}
-
-	shouldRunLocally := os.Getenv(ExecutionMode) == "local"
-	response.environmentIsLocal = shouldRunLocally
 
 	mongoURI := os.Getenv(MongoDBURI)
 
@@ -41,7 +37,7 @@ func InitializationHandler() (*InitializationResponse, error) {
 		return nil, err
 	}
 
-	response.mongoDbClient = mongoClient
+	response.MongoDbClient = mongoClient
 	return response, nil
 
 }

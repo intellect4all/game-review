@@ -6,6 +6,7 @@ import (
 	"github.com/go-playground/validator/v10"
 	"github.com/golang-jwt/jwt"
 	"golang.org/x/crypto/bcrypt"
+	"log"
 	"strings"
 	"time"
 	"unicode"
@@ -16,8 +17,9 @@ type UserID string
 type AuthenticatedUserJWT string
 
 type JwtClaims struct {
-	Email string `json:"email"`
-	Role  string `json:"role" validate:"required,oneof=user admin moderator"`
+	Email      string `json:"email"`
+	Role       string `json:"role" validate:"required,oneof=user admin moderator"`
+	IsVerified bool   `json:"isVerified"`
 	jwt.StandardClaims
 }
 
@@ -26,23 +28,19 @@ func (c *JwtClaims) Validate() error {
 }
 
 type UserCredential struct {
-	Id         UserID    `json:"email" bson:"email" validate:"required,email" `
-	Role       string    `json:"role" bson:"role" validate:"required,oneof=user admin moderator"`
-	Password   string    `json:"password" bson:"password" validate:"required,min=8"`
-	IsActive   bool      `json:"isActive" bson:"isActive"`
-	CreatedAt  time.Time `json:"createdAt" bson:"createdAt"`
-	IsVerified bool      `json:"isVerified" bson:"isVerified"`
+	Id         UserID      `json:"email" bson:"email" validate:"required,email" `
+	Password   string      `json:"password" bson:"password" validate:"required,min=8"`
+	IsActive   bool        `json:"isActive" bson:"isActive"`
+	CreatedAt  time.Time   `json:"createdAt" bson:"createdAt"`
+	UserDetail *UserDetail `json:"userDetail" bson:"userDetail"`
 }
 
 type UserDetail struct {
-	User  UserCredential
-	Phone string `json:"phone" bson:"phone" validate:"required"`
-}
-
-type SignUpRequest struct {
-	Email    string `json:"email" validate:"required,email"`
-	Password string `json:"password" validate:"required"`
-	Role     string `json:"role" validate:"required,oneof=customer admin"`
+	IsVerified bool   `json:"isVerified" bson:"isVerified"`
+	FirstName  string `json:"firstName" bson:"firstName" validate:"required"`
+	LastName   string `json:"lastName" bson:"lastName" validate:"required"`
+	Phone      string `json:"phone" bson:"phone" validate:"omitempty"`
+	Role       string `json:"role" bson:"role" validate:"required,oneof=user admin moderator"`
 }
 
 func NewService(repository Repository, jwtHelper JWTHelper) *Service {
@@ -55,7 +53,7 @@ type Repository interface {
 	GetUserDetail(ctx context.Context, email UserID) (*UserDetail, error)
 	DeleteUser(ctx context.Context, email UserID) error
 	CreateOTP(ctx context.Context, id *UserID) (string, error)
-	VerifyUser(ctx context.Context, requestData *OtpCheckData) error
+	VerifyUser(ctx context.Context, requestData *VerifyAccountRequest) error
 	ChangePassword(ctx context.Context, f *ForgetAndResetPasswordRequest) error
 }
 
@@ -66,11 +64,11 @@ type JWTHelper interface {
 }
 
 func (u *UserDetail) isAdmin() bool {
-	return u.User.Role == "admin"
+	return u.Role == "admin"
 }
 
 func (u *UserDetail) isCustomer() bool {
-	return u.User.Role == "customer"
+	return u.Role == "customer"
 }
 
 type Service struct {
@@ -116,20 +114,29 @@ func (s *Service) CreateUser(ctx context.Context, signUpRequest *SignUpRequest) 
 	return nil
 }
 
-func (s *Service) AuthenticateUser(ctx context.Context, loginRequest *LoginRequest) (*AuthenticatedUserJWT, error) {
+func (s *Service) AuthenticateUser(ctx context.Context, loginRequest *LoginRequest) (detail *UserDetail, jwtToken *AuthenticatedUserJWT, err error) {
 	userId := UserID(strings.ToLower(loginRequest.Email))
 	userCredentialFromDb, err := s.repository.GetUserCredential(ctx, userId)
 	if err != nil {
-		return nil, err
+		return
 	}
 
 	if !isCorrectPassword(loginRequest.Password, userCredentialFromDb.Password) {
-		return nil, ErrInvalidCredentials
+		err = ErrInvalidCredentials
+		return
 	}
 
-	claims := &JwtClaims{
-		Email: string(userCredentialFromDb.Id),
-		Role:  userCredentialFromDb.Role,
+	if !userCredentialFromDb.IsActive {
+		err = ErrAccountInactive
+		return
+	}
+
+	detail = userCredentialFromDb.UserDetail
+
+	claims := JwtClaims{
+		Email:      string(userCredentialFromDb.Id),
+		Role:       userCredentialFromDb.UserDetail.Role,
+		IsVerified: userCredentialFromDb.UserDetail.IsVerified,
 		StandardClaims: jwt.StandardClaims{
 			ExpiresAt: time.Now().Add(time.Hour * 24).Unix(),
 			IssuedAt:  time.Now().Unix(),
@@ -138,15 +145,12 @@ func (s *Service) AuthenticateUser(ctx context.Context, loginRequest *LoginReque
 		},
 	}
 
-	token, err := s.jwtHelper.GenerateJWT(claims)
-	if err != nil {
-		return nil, UnknownError
-	}
-
-	return token, nil
+	log.Println("claims", claims)
+	jwtToken, err = s.jwtHelper.GenerateJWT(&claims)
+	return
 }
 
-func (s *Service) refreshJWT(ctx context.Context, jwt AuthenticatedUserJWT) (token *AuthenticatedUserJWT, err error) {
+func (s *Service) refreshJWT(jwt AuthenticatedUserJWT) (token *AuthenticatedUserJWT, err error) {
 	token, err = s.jwtHelper.RenewJWT(jwt)
 	return
 }
@@ -178,7 +182,9 @@ func (s *Service) GetUserCredential(ctx context.Context, email UserID) (*UserCre
 }
 
 func (s *Service) CreateVerificationOTP(ctx context.Context, userId *UserID) (tokenID string, err error) {
-
+	if !s.isUserIDValid(userId) {
+		return "", ErrInvalidRequest
+	}
 	credential, err := s.GetUserCredential(ctx, *userId)
 
 	tokenID = ""
@@ -187,7 +193,7 @@ func (s *Service) CreateVerificationOTP(ctx context.Context, userId *UserID) (to
 		return "", err
 	}
 
-	if credential.IsVerified {
+	if credential.UserDetail.IsVerified {
 		return "", ErrUserAlreadyVerified
 	}
 
@@ -200,27 +206,16 @@ func (s *Service) CreateVerificationOTP(ctx context.Context, userId *UserID) (to
 	return
 }
 
-type OtpCheckData struct {
-	TokenID string `json:"tokenID" validate:"required"`
-	OTPCode string `json:"otpCode" validate:"required"`
-	Email   string `json:"email" validate:"required,email"`
-}
-
-type ForgetAndResetPasswordRequest struct {
-	Email           string `json:"email" validate:"required,email"`
-	TokenID         string `json:"tokenID" validate:"required"`
-	OTPCode         string `json:"otpCode" validate:"required"`
-	Password        string `json:"password" validate:"required,min=8"`
-	ConfirmPassword string `json:"confirmPassword" validate:"required,min=8"`
-}
-
-func (s *Service) VerifyUser(ctx context.Context, requestData *OtpCheckData) error {
+func (s *Service) VerifyUser(ctx context.Context, requestData *VerifyAccountRequest) error {
 	return s.repository.VerifyUser(ctx, requestData)
 
 }
 
-func (s *Service) InitForgotPassword(ctx context.Context, userID *UserID) (string, error) {
-	_, err := s.GetUserCredential(ctx, *userID)
+func (s *Service) InitForgotPassword(ctx context.Context, userId *UserID) (string, error) {
+	if !s.isUserIDValid(userId) {
+		return "", ErrInvalidRequest
+	}
+	_, err := s.GetUserCredential(ctx, *userId)
 
 	tokenID := ""
 
@@ -228,7 +223,7 @@ func (s *Service) InitForgotPassword(ctx context.Context, userID *UserID) (strin
 		return "", err
 	}
 
-	tokenID, err = s.repository.CreateOTP(ctx, userID)
+	tokenID, err = s.repository.CreateOTP(ctx, userId)
 
 	if err != nil {
 		return "", err
@@ -277,17 +272,33 @@ func isPasswordValid(password string) (bool, string) {
 	return true, ""
 }
 
+func (s *Service) isUserIDValid(id *UserID) bool {
+	err := s.validate.Var(id, "required,email")
+	if err != nil {
+		return false
+	}
+	return true
+}
+
 func getDefaultUserCredential(id *UserID, password string, request SignUpRequest) *UserCredential {
 
 	return &UserCredential{
-		Password:   password,
-		Role:       strings.ToLower(request.Role),
-		IsActive:   strings.ToLower(request.Role) == "user",
-		IsVerified: false,
-		CreatedAt:  time.Now(),
-		Id:         *id,
+		Password:  password,
+		IsActive:  strings.ToLower(request.Role) == "user",
+		CreatedAt: time.Now(),
+		Id:        *id,
+		UserDetail: &UserDetail{
+			Role:       trimAndLowercase(request.Role),
+			IsVerified: false,
+			FirstName:  strings.TrimSpace(request.FirstName),
+			LastName:   strings.TrimSpace(request.LastName),
+		},
 	}
 
+}
+
+func trimAndLowercase(email string) string {
+	return strings.ToLower(strings.TrimSpace(email))
 }
 
 func isCorrectPassword(password string, encryptedPassword string) bool {

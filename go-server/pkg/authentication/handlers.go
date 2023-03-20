@@ -3,6 +3,8 @@ package authentication
 import (
 	"context"
 	"github.com/gofiber/fiber/v2"
+	"log"
+	"net/url"
 )
 
 type AuthHandler struct {
@@ -13,11 +15,6 @@ func NewHandler(authService *Service) *AuthHandler {
 	return &AuthHandler{
 		authService: authService,
 	}
-}
-
-type LoginRequest struct {
-	Email    string `json:"email" validate:"required,email"`
-	Password string `json:"password" validate:"required"`
 }
 
 func (a *AuthHandler) Login(ctx context.Context, c *fiber.Ctx) error {
@@ -31,18 +28,31 @@ func (a *AuthHandler) Login(ctx context.Context, c *fiber.Ctx) error {
 		})
 	}
 
-	jwt, err := a.authService.AuthenticateUser(ctx, &req)
+	userData, jwt, err := a.authService.AuthenticateUser(ctx, &req)
 	if err != nil {
-		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
-			"message": "Invalid credentials",
+		var status int
+		var message string
+		if err == ErrAccountInactive {
+			status = fiber.StatusUpgradeRequired
+			message = "Account is marked inactive. Contact Support"
+		} else if err == ErrInvalidCredentials {
+			status = fiber.StatusBadRequest
+			message = "Invalid credentials"
+		} else if err == ErrUserNotFound {
+			status = fiber.StatusNotFound
+			message = "User not found"
+		} else {
+			status = fiber.StatusInternalServerError
+			message = "Something went wrong"
+		}
+
+		return c.Status(status).JSON(fiber.Map{
+			"message": message,
 			"error":   err.Error(),
 		})
 	}
 
-	return c.Status(fiber.StatusOK).JSON(fiber.Map{
-		"message": "Login successful",
-		"data":    map[string]interface{}{"jwt": jwt},
-	})
+	return c.Status(fiber.StatusOK).JSON(GetLoginSuccessResponse(jwt, userData))
 
 }
 
@@ -73,10 +83,6 @@ func (a *AuthHandler) Signup(ctx context.Context, c *fiber.Ctx) error {
 	})
 }
 
-type Email struct {
-	Email string `json:"email" bson:"email"`
-}
-
 func (a *AuthHandler) InitAccountVerification(ctx context.Context, c *fiber.Ctx) error {
 
 	userId, err := extractUserIDFromRequest(c)
@@ -85,7 +91,9 @@ func (a *AuthHandler) InitAccountVerification(ctx context.Context, c *fiber.Ctx)
 		return err
 	}
 
-	otp, err := a.authService.CreateVerificationOTP(ctx, userId)
+	log.Printf("Email %s", string(*userId))
+
+	otpID, err := a.authService.CreateVerificationOTP(ctx, userId)
 	if err != nil {
 		status := 0
 		switch err {
@@ -103,12 +111,12 @@ func (a *AuthHandler) InitAccountVerification(ctx context.Context, c *fiber.Ctx)
 		})
 	}
 
-	return c.Status(fiber.StatusCreated).JSON(OTPCreationSuccessResponse(&otp, (*string)(userId)))
+	return c.Status(fiber.StatusCreated).JSON(GetOTPCreationResponse(&otpID, (*string)(userId)))
 }
 
 func (a *AuthHandler) VerifyAccount(ctx context.Context, c *fiber.Ctx) error {
 
-	var verifyRequest OtpCheckData
+	var verifyRequest VerifyAccountRequest
 
 	err := c.BodyParser(&verifyRequest)
 
@@ -153,7 +161,7 @@ func (a *AuthHandler) InitForgotPassword(ctx context.Context, c *fiber.Ctx) erro
 		return err
 	}
 
-	otp, err := a.authService.InitForgotPassword(ctx, userID)
+	otpID, err := a.authService.InitForgotPassword(ctx, userID)
 
 	if err != nil {
 		status := 0
@@ -169,10 +177,10 @@ func (a *AuthHandler) InitForgotPassword(ctx context.Context, c *fiber.Ctx) erro
 		})
 	}
 
-	return c.Status(fiber.StatusCreated).JSON(OTPCreationSuccessResponse(&otp, (*string)(userID)))
+	return c.Status(fiber.StatusCreated).JSON(GetOTPCreationResponse(&otpID, (*string)(userID)))
 }
 
-func (a *AuthHandler) VerifyForgotPassword(ctx context.Context, c *fiber.Ctx) error {
+func (a *AuthHandler) ResetPassword(ctx context.Context, c *fiber.Ctx) error {
 	var verifyRequest ForgetAndResetPasswordRequest
 
 	err := c.BodyParser(&verifyRequest)
@@ -210,20 +218,22 @@ func (a *AuthHandler) VerifyForgotPassword(ctx context.Context, c *fiber.Ctx) er
 }
 
 func extractUserIDFromRequest(c *fiber.Ctx) (*UserID, error) {
-	var email Email
-
-	err := c.BodyParser(&email)
-
+	email := struct {
+		Email string `params:"email"`
+	}{}
 	var userID UserID
+	err := c.ParamsParser(&email)
+
+	emailStr, err := url.QueryUnescape(email.Email)
 
 	if err != nil {
 		return &userID, c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 			"message": "Invalid request body",
-			"error":   err.Error(),
+			"error":   ErrInvalidRequest,
 		})
 	}
 
-	userID = UserID(email.Email)
+	userID = UserID(emailStr)
 
 	return &userID, nil
 }

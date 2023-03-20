@@ -1,9 +1,9 @@
 package authentication
 
 import (
-	"crypto/rsa"
 	"github.com/golang-jwt/jwt"
-	"os"
+	"go-server/pkg/security"
+	"log"
 )
 
 type JWTHelperImpl struct{}
@@ -15,16 +15,18 @@ func NewJWTHelper() *JWTHelperImpl {
 func (j *JWTHelperImpl) GenerateJWT(claims *JwtClaims) (*AuthenticatedUserJWT, error) {
 	token := jwt.NewWithClaims(jwt.SigningMethodRS256, claims)
 
-	key, err := getJWTKey("key.pem")
+	key, err := security.GetPrivateKey("key.pem")
 
 	if err != nil {
+		log.Printf("Error getting jwt key: %s", err.Error())
 		return nil, err
 	}
 
 	tokenString, err := token.SignedString(key)
 
 	if err != nil {
-		return nil, err
+		log.Printf("Error generating jwt %s", err.Error())
+		return nil, UnknownError
 	}
 	jwtToken := AuthenticatedUserJWT(tokenString)
 	return &jwtToken, nil
@@ -47,7 +49,7 @@ func (j *JWTHelperImpl) ValidateJWT(jwtToken AuthenticatedUserJWT) (*JwtClaims, 
 			return nil, ErrInvalidJWT
 		}
 
-		return getJWTKey("key.pem.pub")
+		return security.GetPrivateKey("key.pem.pub")
 	})
 
 	claims, ok := token.Claims.(JwtClaims)
@@ -56,36 +58,4 @@ func (j *JWTHelperImpl) ValidateJWT(jwtToken AuthenticatedUserJWT) (*JwtClaims, 
 	}
 
 	return &claims, nil
-}
-
-func getJWTKey(file string) (*rsa.PrivateKey, error) {
-	secretPrivateFile, err := os.Open(file)
-	defer func(secretPrivateFile *os.File) {
-		err := secretPrivateFile.Close()
-		if err != nil {
-			panic(err)
-		}
-	}(secretPrivateFile)
-
-	if err != nil {
-		return nil, err
-	}
-
-	fileStat, err := secretPrivateFile.Stat()
-
-	if err != nil {
-		return nil, err
-	}
-
-	secretKey := make([]byte, fileStat.Size())
-	_, err = secretPrivateFile.Read(secretKey)
-
-	privateKey, err := jwt.ParseRSAPrivateKeyFromPEM(secretKey)
-
-	if err != nil {
-		return nil, err
-	}
-
-	return privateKey, nil
-
 }
