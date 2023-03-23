@@ -3,7 +3,6 @@ package authentication
 import (
 	"context"
 	"github.com/gofiber/fiber/v2"
-	"log"
 	"net/url"
 )
 
@@ -90,8 +89,6 @@ func (a *AuthHandler) InitAccountVerification(ctx context.Context, c *fiber.Ctx)
 	if err != nil {
 		return err
 	}
-
-	log.Printf("Email %s", string(*userId))
 
 	otpID, err := a.authService.CreateVerificationOTP(ctx, userId)
 	if err != nil {

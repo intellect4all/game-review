@@ -42,10 +42,9 @@ func (m *MongoRepository) CreateNewUser(ctx context.Context, userCredential *Use
 func (m *MongoRepository) GetUserCredential(ctx context.Context, userId UserID) (*UserCredential, error) {
 	var userCredential UserCredential
 
-	fmt.Printf("userIDString %s \n", userId)
 	err := m.mongoDbClient.Database("test").Collection("users").FindOne(ctx, bson.D{{"email", userId}}).Decode(&userCredential)
 	if err != nil {
-		fmt.Printf("Error: %v, %v \n", err, err.Error())
+
 		return nil, ErrUserNotFound
 	}
 
@@ -88,7 +87,6 @@ func (m *MongoRepository) DeleteUser(ctx context.Context, userId UserID) error {
 func (m *MongoRepository) CreateOTP(ctx context.Context, id *UserID) (string, error) {
 	otpData := getOTPData(id)
 
-	fmt.Printf("otpData %v \n", otpData)
 	res, err := m.mongoDbClient.Database("test").Collection("otpCodes").InsertOne(ctx, otpData)
 	if err != nil {
 		return "", ErrOTPCreationFailed
@@ -105,7 +103,7 @@ func (m *MongoRepository) CreateOTP(ctx context.Context, id *UserID) (string, er
 }
 
 func sendEmailToUser(data *OtpData) {
-	fmt.Println("Sending email to user")
+	
 	emailRequest := notifications.EmailRequest{
 		From:    "cool_game_rev.com",
 		To:      data.UserId,

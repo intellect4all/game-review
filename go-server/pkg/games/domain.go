@@ -4,6 +4,8 @@ import (
 	"context"
 	"github.com/go-playground/validator/v10"
 	"log"
+	"strings"
+	"time"
 )
 
 type GameService struct {
@@ -41,8 +43,6 @@ type GameRepository interface {
 }
 
 func (g *GameService) AddGameGenre(ctx context.Context, genre *GameGenre) error {
-	log.Println("Authenticated")
-
 	if err := g.validate.Struct(genre); err != nil {
 		log.Printf("Validation error: %s", err.Error())
 		return err
@@ -60,21 +60,23 @@ func (g *GameService) AddGameGenre(ctx context.Context, genre *GameGenre) error 
 		return err
 	}
 
-	log.Println("Game genre added successfully")
-
 	return nil
 }
 
 func (g *GameService) EditGameGenre(ctx context.Context, genre *GameGenre) error {
+	slug := strings.TrimSpace(genre.Slug)
 
-	if err := g.validate.Struct(genre); err != nil {
-		return err
+	if genre.Slug == "" {
+		return ErrGameGenreSlugRequired
 	}
-	_, err := g.repository.getGameGenre(ctx, genre.Slug)
+
+	oldGenre, err := g.repository.getGameGenre(ctx, slug)
 
 	if err != nil {
+
 		return err
 	}
+	updateGenre(genre, oldGenre)
 
 	err = g.repository.updateGameGenre(ctx, genre)
 
@@ -83,6 +85,21 @@ func (g *GameService) EditGameGenre(ctx context.Context, genre *GameGenre) error
 	}
 
 	return nil
+}
+
+func updateGenre(new *GameGenre, old *GameGenre) {
+	new.Slug = old.Slug
+	new.CreatedAt = old.CreatedAt
+
+	if strings.TrimSpace(new.Title) == "" {
+		new.Title = old.Title
+	}
+
+	if strings.TrimSpace(new.Desc) == "" {
+		new.Desc = old.Desc
+	}
+
+	new.UpdatedAt = time.Now()
 }
 
 func (g *GameService) GetGameGenre(ctx context.Context, slug string) (*GameGenre, error) {
@@ -114,6 +131,6 @@ func (g *GameService) DeleteGameGenre(ctx context.Context, slug string) error {
 	if err != nil {
 		return err
 	}
-
+	// ideally, we should check if the genre is being used by any game before deleting it
 	return g.repository.deleteGameGenre(ctx, slug)
 }

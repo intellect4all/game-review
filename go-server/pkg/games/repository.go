@@ -6,7 +6,6 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
-	"time"
 )
 
 const (
@@ -36,8 +35,6 @@ func (g *GameRepositoryImpl) saveGameGenre(ctx context.Context, genre *GameGenre
 }
 
 func (g *GameRepositoryImpl) updateGameGenre(ctx context.Context, genre *GameGenre) error {
-
-	genre.UpdatedAt = time.Now()
 
 	filter := bson.D{{"slug", genre.Slug}}
 	opts := options.Update().SetUpsert(true)

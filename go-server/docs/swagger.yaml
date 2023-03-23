@@ -119,6 +119,49 @@ definitions:
       slug:
         type: string
     type: object
+  games.EditGenreRequest:
+    properties:
+      desc:
+        type: string
+      slug:
+        type: string
+      title:
+        type: string
+    type: object
+  games.GameGenre:
+    properties:
+      createdAt:
+        type: string
+      desc:
+        type: string
+      slug:
+        type: string
+      title:
+        type: string
+      updatedAt:
+        type: string
+    required:
+    - desc
+    - slug
+    - title
+    type: object
+  games.PaginatedGameGenres:
+    properties:
+      currentPage:
+        type: integer
+      data:
+        items:
+          $ref: '#/definitions/games.GameGenre'
+        type: array
+      hasMore:
+        type: boolean
+      itemsPerPage:
+        type: integer
+      totalItems:
+        type: integer
+      totalPages:
+        type: integer
+    type: object
   main.JSONErrorRes:
     properties:
       error: {}
@@ -264,6 +307,134 @@ paths:
       summary: Complete Forget password reset
       tags:
       - Authentication
+  /api/v1/games/genres:
+    get:
+      consumes:
+      - application/json
+      description: Gets all game genres, limits and offset can be used to paginate
+        the results
+      operationId: getGenres
+      parameters:
+      - in: query
+        name: limit
+        type: integer
+      - in: query
+        name: offset
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Success
+          schema:
+            allOf:
+            - $ref: '#/definitions/main.JSONResult'
+            - properties:
+                data:
+                  $ref: '#/definitions/games.PaginatedGameGenres'
+              type: object
+        "400":
+          description: Bad request
+          schema:
+            $ref: '#/definitions/main.JSONErrorRes'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/main.JSONErrorRes'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/main.JSONErrorRes'
+      security:
+      - BearerAuth: []
+      summary: Gets all game genres
+      tags:
+      - games
+  /api/v1/games/genres/{slug}:
+    delete:
+      description: the slug is required
+      operationId: deleteGenre
+      parameters:
+      - description: slug
+        in: path
+        name: slug
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Success
+          schema:
+            allOf:
+            - $ref: '#/definitions/main.JSONResult'
+            - properties:
+                data:
+                  type: string
+              type: object
+        "400":
+          description: Bad request
+          schema:
+            $ref: '#/definitions/main.JSONErrorRes'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/main.JSONErrorRes'
+        "404":
+          description: Genre not found
+          schema:
+            $ref: '#/definitions/main.JSONErrorRes'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/main.JSONErrorRes'
+      security:
+      - BearerAuth: []
+      summary: Delete a game genre
+      tags:
+      - games
+    get:
+      description: the slug is required
+      operationId: getGenre
+      parameters:
+      - description: slug
+        in: path
+        name: slug
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Success
+          schema:
+            allOf:
+            - $ref: '#/definitions/main.JSONResult'
+            - properties:
+                data:
+                  $ref: '#/definitions/games.GameGenre'
+              type: object
+        "400":
+          description: Bad request
+          schema:
+            $ref: '#/definitions/main.JSONErrorRes'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/main.JSONErrorRes'
+        "404":
+          description: Genre not found
+          schema:
+            $ref: '#/definitions/main.JSONErrorRes'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/main.JSONErrorRes'
+      security:
+      - BearerAuth: []
+      summary: Gets a game genre
+      tags:
+      - games
   /api/v1/games/genres/add:
     post:
       consumes:
@@ -309,6 +480,52 @@ paths:
       security:
       - BearerAuth: []
       summary: Adds a new game genre
+      tags:
+      - games
+  /api/v1/games/genres/update:
+    post:
+      consumes:
+      - application/json
+      description: Updates a game genre, the slug is required
+      operationId: updateGenre
+      parameters:
+      - description: updateGenre request
+        in: body
+        name: updateGenre
+        required: true
+        schema:
+          $ref: '#/definitions/games.EditGenreRequest'
+      produces:
+      - application/json
+      responses:
+        "202":
+          description: Success
+          schema:
+            allOf:
+            - $ref: '#/definitions/main.JSONResult'
+            - properties:
+                data:
+                  type: string
+              type: object
+        "400":
+          description: Bad request
+          schema:
+            $ref: '#/definitions/main.JSONErrorRes'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/main.JSONErrorRes'
+        "404":
+          description: Genre not found
+          schema:
+            $ref: '#/definitions/main.JSONErrorRes'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/main.JSONErrorRes'
+      security:
+      - BearerAuth: []
+      summary: Updates a game genre
       tags:
       - games
   /api/v1/login:
