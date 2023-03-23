@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"github.com/joho/godotenv"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
@@ -43,7 +42,7 @@ func InitializationHandler() (*InitializationResponse, error) {
 }
 
 func getMongoClient(uri string) (*mongo.Client, error) {
-	log.Println("Connecting to MongoDB: ", uri, "")
+	log.Println("Connecting to MongoDB: ")
 	serverAPIOptions := options.ServerAPI(options.ServerAPIVersion1)
 	clientOptions := options.Client().
 		ApplyURI(uri).
@@ -60,7 +59,7 @@ func getMongoClient(uri string) (*mongo.Client, error) {
 		log.Fatal(err)
 	}
 
-	log.Println("mongo connected", uri, "")
+	log.Println("mongo connected")
 
 	return client, nil
 }
@@ -68,7 +67,9 @@ func getMongoClient(uri string) (*mongo.Client, error) {
 func loadEnvVariables() {
 	err := godotenv.Load()
 	if err != nil {
-		fmt.Printf("unable to load env")
+		log.Printf("unable to load env")
 	}
+
+	log.Println("env loaded")
 
 }

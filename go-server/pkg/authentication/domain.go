@@ -6,7 +6,6 @@ import (
 	"github.com/go-playground/validator/v10"
 	"github.com/golang-jwt/jwt"
 	"golang.org/x/crypto/bcrypt"
-	"log"
 	"strings"
 	"time"
 	"unicode"
@@ -21,6 +20,17 @@ type JwtClaims struct {
 	Role       string `json:"role" validate:"required,oneof=user admin moderator"`
 	IsVerified bool   `json:"isVerified"`
 	jwt.StandardClaims
+}
+
+func (c *JwtClaims) fromMap(claims map[string]interface{}) *JwtClaims {
+	c.Email = claims["email"].(string)
+	c.Role = claims["role"].(string)
+	c.IsVerified = claims["isVerified"].(bool)
+	c.Issuer = claims["iss"].(string)
+	c.Audience = claims["aud"].(string)
+	c.ExpiresAt = int64(claims["exp"].(float64))
+	c.IssuedAt = int64(claims["iat"].(float64))
+	return c
 }
 
 func (c *JwtClaims) Validate() error {
@@ -43,11 +53,11 @@ type UserDetail struct {
 	Role       string `json:"role" bson:"role" validate:"required,oneof=user admin moderator"`
 }
 
-func NewService(repository Repository, jwtHelper JWTHelper) *Service {
-	return &Service{repository: repository, jwtHelper: jwtHelper, validate: validator.New()}
+func NewService(repository AuthRepository, jwtHelper JWTHelper) *AuthService {
+	return &AuthService{repository: repository, jwtHelper: jwtHelper, validate: validator.New()}
 }
 
-type Repository interface {
+type AuthRepository interface {
 	CreateNewUser(ctx context.Context, userDetail *UserCredential) error
 	GetUserCredential(ctx context.Context, email UserID) (*UserCredential, error)
 	GetUserDetail(ctx context.Context, email UserID) (*UserDetail, error)
@@ -71,13 +81,13 @@ func (u *UserDetail) isCustomer() bool {
 	return u.Role == "customer"
 }
 
-type Service struct {
-	repository Repository
+type AuthService struct {
+	repository AuthRepository
 	jwtHelper  JWTHelper
 	validate   *validator.Validate
 }
 
-func (s *Service) CreateUser(ctx context.Context, signUpRequest *SignUpRequest) error {
+func (s *AuthService) CreateUser(ctx context.Context, signUpRequest *SignUpRequest) error {
 	valRes := s.validate.Struct(signUpRequest)
 
 	if valRes != nil {
@@ -114,7 +124,7 @@ func (s *Service) CreateUser(ctx context.Context, signUpRequest *SignUpRequest) 
 	return nil
 }
 
-func (s *Service) AuthenticateUser(ctx context.Context, loginRequest *LoginRequest) (detail *UserDetail, jwtToken *AuthenticatedUserJWT, err error) {
+func (s *AuthService) AuthenticateUser(ctx context.Context, loginRequest *LoginRequest) (detail *UserDetail, jwtToken *AuthenticatedUserJWT, err error) {
 	userId := UserID(strings.ToLower(loginRequest.Email))
 	userCredentialFromDb, err := s.repository.GetUserCredential(ctx, userId)
 	if err != nil {
@@ -145,17 +155,16 @@ func (s *Service) AuthenticateUser(ctx context.Context, loginRequest *LoginReque
 		},
 	}
 
-	log.Println("claims", claims)
 	jwtToken, err = s.jwtHelper.GenerateJWT(&claims)
 	return
 }
 
-func (s *Service) refreshJWT(jwt AuthenticatedUserJWT) (token *AuthenticatedUserJWT, err error) {
+func (s *AuthService) refreshJWT(jwt AuthenticatedUserJWT) (token *AuthenticatedUserJWT, err error) {
 	token, err = s.jwtHelper.RenewJWT(jwt)
 	return
 }
 
-func (s *Service) DeleteUser(ctx context.Context, jwt AuthenticatedUserJWT, userID UserID) error {
+func (s *AuthService) DeleteUser(ctx context.Context, jwt AuthenticatedUserJWT, userID UserID) error {
 	claims, err := s.jwtHelper.ValidateJWT(jwt)
 	if err != nil {
 		return err
@@ -177,11 +186,11 @@ func (s *Service) DeleteUser(ctx context.Context, jwt AuthenticatedUserJWT, user
 	return s.repository.DeleteUser(ctx, userID)
 }
 
-func (s *Service) GetUserCredential(ctx context.Context, email UserID) (*UserCredential, error) {
+func (s *AuthService) GetUserCredential(ctx context.Context, email UserID) (*UserCredential, error) {
 	return s.repository.GetUserCredential(ctx, email)
 }
 
-func (s *Service) CreateVerificationOTP(ctx context.Context, userId *UserID) (tokenID string, err error) {
+func (s *AuthService) CreateVerificationOTP(ctx context.Context, userId *UserID) (tokenID string, err error) {
 	if !s.isUserIDValid(userId) {
 		return "", ErrInvalidRequest
 	}
@@ -206,12 +215,12 @@ func (s *Service) CreateVerificationOTP(ctx context.Context, userId *UserID) (to
 	return
 }
 
-func (s *Service) VerifyUser(ctx context.Context, requestData *VerifyAccountRequest) error {
+func (s *AuthService) VerifyUser(ctx context.Context, requestData *VerifyAccountRequest) error {
 	return s.repository.VerifyUser(ctx, requestData)
 
 }
 
-func (s *Service) InitForgotPassword(ctx context.Context, userId *UserID) (string, error) {
+func (s *AuthService) InitForgotPassword(ctx context.Context, userId *UserID) (string, error) {
 	if !s.isUserIDValid(userId) {
 		return "", ErrInvalidRequest
 	}
@@ -232,7 +241,7 @@ func (s *Service) InitForgotPassword(ctx context.Context, userId *UserID) (strin
 	return tokenID, nil
 }
 
-func (s *Service) ChangePassword(ctx context.Context, f *ForgetAndResetPasswordRequest) error {
+func (s *AuthService) ChangePassword(ctx context.Context, f *ForgetAndResetPasswordRequest) error {
 	return s.repository.ChangePassword(ctx, f)
 }
 
@@ -272,7 +281,7 @@ func isPasswordValid(password string) (bool, string) {
 	return true, ""
 }
 
-func (s *Service) isUserIDValid(id *UserID) bool {
+func (s *AuthService) isUserIDValid(id *UserID) bool {
 	err := s.validate.Var(id, "required,email")
 	if err != nil {
 		return false

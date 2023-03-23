@@ -13,6 +13,7 @@ func NewJWTHelper() *JWTHelperImpl {
 }
 
 func (j *JWTHelperImpl) GenerateJWT(claims *JwtClaims) (*AuthenticatedUserJWT, error) {
+
 	token := jwt.NewWithClaims(jwt.SigningMethodRS256, claims)
 
 	key, err := security.GetPrivateKey("key.pem")
@@ -44,18 +45,58 @@ func (j *JWTHelperImpl) RenewJWT(jwt AuthenticatedUserJWT) (token *Authenticated
 }
 
 func (j *JWTHelperImpl) ValidateJWT(jwtToken AuthenticatedUserJWT) (*JwtClaims, error) {
-	token, err := jwt.Parse(string(jwtToken), func(token *jwt.Token) (interface{}, error) {
+	log.Println("Validating JWT ")
+
+	tokenString := string(jwtToken)
+
+	token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
+		log.Println("Parsing token")
+
 		if _, ok := token.Method.(*jwt.SigningMethodRSA); !ok {
+			log.Println("Error parsing token")
 			return nil, ErrInvalidJWT
 		}
 
-		return security.GetPrivateKey("key.pem.pub")
+		log.Println("Token parsed")
+		key, err := security.GetPrivateKey("key.pem")
+
+		if err != nil {
+			log.Println("Error getting private key")
+			return nil, err
+		}
+
+		log.Println("Private key obtained")
+		return key.Public(), nil
 	})
 
-	claims, ok := token.Claims.(JwtClaims)
-	if !ok || !token.Valid {
+	log.Println("Token parsed")
+
+	if err != nil {
+		log.Println("Error parsing token")
 		return &JwtClaims{}, err
 	}
 
-	return &claims, nil
+	log.Println("Token parsed successfully", token.Claims)
+
+	claims := token.Claims
+
+	jwtClaims := &JwtClaims{}
+
+	jwtClaims.fromMap(claims.(jwt.MapClaims))
+
+	err = jwtClaims.Validate()
+	if err != nil {
+		return nil, err
+	}
+
+	log.Println("Claims parsed successfully", jwtClaims)
+
+	if !token.Valid {
+		log.Println("Error parsing claims")
+		return &JwtClaims{}, err
+	}
+
+	log.Println("Claims parsed successfully")
+
+	return jwtClaims, nil
 }

@@ -10,13 +10,14 @@ import (
 	"github.com/gofiber/swagger"
 	_ "go-server/docs"
 	"go-server/pkg/authentication"
+	"go-server/pkg/games"
 	"log"
 	"os"
 )
 
 //	@title			Game Review API
 //	@version		1.0
-//	@description	This is an Api Service for Cool Game Review Api.
+//	@description	This is an Api AuthService for Cool Game Review Api.
 //	@termsOfService	http://swagger.io/terms/
 
 //	@contact.name	API Support
@@ -29,6 +30,9 @@ import (
 // @host		localhost:3000
 // @BasePath	/
 // @schemes	http
+// @securityDefinitions.apikey BearerAuth
+// @in header
+// @name Authorization
 func main() {
 	// get the environment variables and initialize the application
 	initResponse, err := InitializationHandler()
@@ -49,12 +53,10 @@ func main() {
 	ctx := context.Background()
 	ctx = context.WithValue(ctx, "apiVersion", "/v1")
 
-	fmt.Println("Server is running on port 3000")
 	app.Get("/swagger/*", swagger.HandlerDefault) // default
 
 	app.Get("/loaderio-baf5658b393ffe75ded7e5209eb81d79.txt", func(ctx *fiber.Ctx) error {
 		return ctx.SendFile("resources/loaderTest.txt")
-
 	})
 
 	app.Get("/", func(ctx *fiber.Ctx) error {
@@ -63,14 +65,23 @@ func main() {
 	// register a ping route
 	apiGroup.Get("/v1/ping", ping)
 
+	authNeeds := authentication.NewAuthNeeds()
+
 	err = authentication.Register(initResponse.MongoDbClient, ctx, apiGroup)
+	err = games.Register(initResponse.MongoDbClient, ctx, apiGroup, authNeeds)
+
 	if err != nil {
 		log.Fatal(err)
 		return
 	}
 
-	err = app.Listen(":3000")
+	port := os.Getenv("PORT")
+
+	fmt.Println("Server is running on port: " + port)
+
+	err = app.Listen(":" + port)
 	if err != nil {
+		log.Println(err)
 		os.Exit(1)
 	}
 }
