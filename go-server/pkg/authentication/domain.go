@@ -5,17 +5,17 @@ import (
 	"errors"
 	"github.com/go-playground/validator/v10"
 	"github.com/golang-jwt/jwt"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 	"golang.org/x/crypto/bcrypt"
 	"strings"
 	"time"
 	"unicode"
 )
 
-type UserID string
-
 type AuthenticatedUserJWT string
 
 type JwtClaims struct {
+	Id         string `json:"id"`
 	Email      string `json:"email"`
 	Role       string `json:"role" validate:"required,oneof=user admin moderator"`
 	IsVerified bool   `json:"isVerified"`
@@ -23,8 +23,9 @@ type JwtClaims struct {
 }
 
 func (c *JwtClaims) fromMap(claims map[string]interface{}) *JwtClaims {
-	c.Email = claims["email"].(string)
+	c.Id = claims["id"].(string)
 	c.Role = claims["role"].(string)
+	c.Email = claims["email"].(string)
 	c.IsVerified = claims["isVerified"].(bool)
 	c.Issuer = claims["iss"].(string)
 	c.Audience = claims["aud"].(string)
@@ -38,18 +39,20 @@ func (c *JwtClaims) Validate() error {
 }
 
 type UserCredential struct {
-	Id         UserID      `json:"email" bson:"email" validate:"required,email" `
-	Password   string      `json:"password" bson:"password" validate:"required,min=8"`
-	IsActive   bool        `json:"isActive" bson:"isActive"`
-	CreatedAt  time.Time   `json:"createdAt" bson:"createdAt"`
-	UserDetail *UserDetail `json:"userDetail" bson:"userDetail"`
+	Id         primitive.ObjectID `json:"id" bson:"_id"  validate:"required"`
+	Password   string             `json:"password" bson:"password" validate:"required,min=8"`
+	IsActive   bool               `json:"isActive" bson:"isActive"`
+	CreatedAt  time.Time          `json:"createdAt" bson:"createdAt"`
+	UserDetail *UserDetail        `json:"userDetail" bson:"userDetail"`
+	Email      string             `json:"email" validate:"required,email"`
 }
 
 type UserDetail struct {
-	IsVerified bool   `json:"isVerified" bson:"isVerified"`
+	IsVerified bool   `json:"isVerified" bson:"isVerified" validate:"required"`
 	FirstName  string `json:"firstName" bson:"firstName" validate:"required"`
 	LastName   string `json:"lastName" bson:"lastName" validate:"required"`
 	Phone      string `json:"phone" bson:"phone" validate:"omitempty"`
+	Username   string `json:"username" bson:"username" validate:"required"`
 	Role       string `json:"role" bson:"role" validate:"required,oneof=user admin moderator"`
 }
 
@@ -58,13 +61,15 @@ func NewService(repository AuthRepository, jwtHelper JWTHelper) *AuthService {
 }
 
 type AuthRepository interface {
-	CreateNewUser(ctx context.Context, userDetail *UserCredential) error
-	GetUserCredential(ctx context.Context, email UserID) (*UserCredential, error)
-	GetUserDetail(ctx context.Context, email UserID) (*UserDetail, error)
-	DeleteUser(ctx context.Context, email UserID) error
-	CreateOTP(ctx context.Context, id *UserID) (string, error)
-	VerifyUser(ctx context.Context, requestData *VerifyAccountRequest) error
-	ChangePassword(ctx context.Context, f *ForgetAndResetPasswordRequest) error
+	CreateNewUser(ctx context.Context, userCred UserCredential) error
+	GetUserCredentialByEmail(ctx context.Context, email string) (*UserCredential, error)
+	GetUserCredentialById(ctx context.Context, id string) (*UserCredential, error)
+	GetUserCredentialByUserName(ctx context.Context, username string) (*UserCredential, error)
+	GetUserDetail(ctx context.Context, email string) (*UserDetail, error)
+	DeleteUser(ctx context.Context, email string) error
+	CreateOTP(ctx context.Context, email string) (string, error)
+	VerifyUser(ctx context.Context, req VerifyAccountRequest) error
+	ChangePassword(ctx context.Context, req ForgetAndResetPasswordRequest) error
 }
 
 type JWTHelper interface {
@@ -87,20 +92,28 @@ type AuthService struct {
 	validate   *validator.Validate
 }
 
-func (s *AuthService) CreateUser(ctx context.Context, signUpRequest *SignUpRequest) error {
+func (s *AuthService) CreateUser(ctx context.Context, signUpRequest SignUpRequest) error {
 	valRes := s.validate.Struct(signUpRequest)
 
 	if valRes != nil {
 		return valRes
 	}
 
-	userID := UserID(strings.ToLower(signUpRequest.Email))
+	userID := strings.ToLower(signUpRequest.Email)
 
 	// check if user already exists
-	_, err := s.repository.GetUserCredential(ctx, userID)
+	_, err := s.repository.GetUserCredentialByEmail(ctx, userID)
 
 	if err == nil {
 		return ErrUserAlreadyExists
+	}
+
+	// check if username already exists
+
+	_, err = s.repository.GetUserCredentialByUserName(ctx, signUpRequest.Username)
+
+	if err == nil {
+		return ErrUsernameAlreadyExists
 	}
 
 	if ok, errMessage := isPasswordValid(signUpRequest.Password); !ok {
@@ -113,9 +126,9 @@ func (s *AuthService) CreateUser(ctx context.Context, signUpRequest *SignUpReque
 		return UnknownError
 	}
 
-	userCred := getDefaultUserCredential(&userID, hashedPassword, *signUpRequest)
+	userCred := getDefaultUserCredential(hashedPassword, signUpRequest)
 
-	err = s.repository.CreateNewUser(ctx, userCred)
+	err = s.repository.CreateNewUser(ctx, *userCred)
 
 	if err != nil {
 		return err
@@ -125,8 +138,8 @@ func (s *AuthService) CreateUser(ctx context.Context, signUpRequest *SignUpReque
 }
 
 func (s *AuthService) AuthenticateUser(ctx context.Context, loginRequest *LoginRequest) (detail *UserDetail, jwtToken *AuthenticatedUserJWT, err error) {
-	userId := UserID(strings.ToLower(loginRequest.Email))
-	userCredentialFromDb, err := s.repository.GetUserCredential(ctx, userId)
+	userId := strings.ToLower(loginRequest.Email)
+	userCredentialFromDb, err := s.repository.GetUserCredentialByEmail(ctx, userId)
 	if err != nil {
 		return
 	}
@@ -144,8 +157,9 @@ func (s *AuthService) AuthenticateUser(ctx context.Context, loginRequest *LoginR
 	detail = userCredentialFromDb.UserDetail
 
 	claims := JwtClaims{
-		Email:      string(userCredentialFromDb.Id),
+		Id:         userCredentialFromDb.Id.Hex(),
 		Role:       userCredentialFromDb.UserDetail.Role,
+		Email:      userCredentialFromDb.Email,
 		IsVerified: userCredentialFromDb.UserDetail.IsVerified,
 		StandardClaims: jwt.StandardClaims{
 			ExpiresAt: time.Now().Add(time.Hour * 24).Unix(),
@@ -164,7 +178,7 @@ func (s *AuthService) refreshJWT(jwt AuthenticatedUserJWT) (token *Authenticated
 	return
 }
 
-func (s *AuthService) DeleteUser(ctx context.Context, jwt AuthenticatedUserJWT, userID UserID) error {
+func (s *AuthService) DeleteUser(ctx context.Context, jwt AuthenticatedUserJWT, email string) error {
 	claims, err := s.jwtHelper.ValidateJWT(jwt)
 	if err != nil {
 		return err
@@ -174,7 +188,7 @@ func (s *AuthService) DeleteUser(ctx context.Context, jwt AuthenticatedUserJWT, 
 		return ErrUnauthorized
 	}
 
-	userToDelete, err := s.repository.GetUserDetail(ctx, userID)
+	userToDelete, err := s.repository.GetUserDetail(ctx, email)
 	if err != nil {
 		return err
 	}
@@ -183,18 +197,18 @@ func (s *AuthService) DeleteUser(ctx context.Context, jwt AuthenticatedUserJWT, 
 		return ErrUnauthorized
 	}
 
-	return s.repository.DeleteUser(ctx, userID)
+	return s.repository.DeleteUser(ctx, email)
 }
 
-func (s *AuthService) GetUserCredential(ctx context.Context, email UserID) (*UserCredential, error) {
-	return s.repository.GetUserCredential(ctx, email)
+func (s *AuthService) GetUserCredential(ctx context.Context, email string) (*UserCredential, error) {
+	return s.repository.GetUserCredentialByEmail(ctx, email)
 }
 
-func (s *AuthService) CreateVerificationOTP(ctx context.Context, userId *UserID) (tokenID string, err error) {
-	if !s.isUserIDValid(userId) {
+func (s *AuthService) CreateVerificationOTP(ctx context.Context, email string) (tokenID string, err error) {
+	if !s.isEmailValid(&email) {
 		return "", ErrInvalidRequest
 	}
-	credential, err := s.GetUserCredential(ctx, *userId)
+	credential, err := s.GetUserCredential(ctx, email)
 
 	tokenID = ""
 
@@ -206,7 +220,7 @@ func (s *AuthService) CreateVerificationOTP(ctx context.Context, userId *UserID)
 		return "", ErrUserAlreadyVerified
 	}
 
-	tokenID, err = s.repository.CreateOTP(ctx, userId)
+	tokenID, err = s.repository.CreateOTP(ctx, email)
 
 	if err != nil {
 		return "", err
@@ -215,16 +229,16 @@ func (s *AuthService) CreateVerificationOTP(ctx context.Context, userId *UserID)
 	return
 }
 
-func (s *AuthService) VerifyUser(ctx context.Context, requestData *VerifyAccountRequest) error {
+func (s *AuthService) VerifyUser(ctx context.Context, requestData VerifyAccountRequest) error {
 	return s.repository.VerifyUser(ctx, requestData)
 
 }
 
-func (s *AuthService) InitForgotPassword(ctx context.Context, userId *UserID) (string, error) {
-	if !s.isUserIDValid(userId) {
+func (s *AuthService) InitForgotPassword(ctx context.Context, email string) (string, error) {
+	if !s.isEmailValid(&email) {
 		return "", ErrInvalidRequest
 	}
-	_, err := s.GetUserCredential(ctx, *userId)
+	_, err := s.GetUserCredential(ctx, email)
 
 	tokenID := ""
 
@@ -232,7 +246,7 @@ func (s *AuthService) InitForgotPassword(ctx context.Context, userId *UserID) (s
 		return "", err
 	}
 
-	tokenID, err = s.repository.CreateOTP(ctx, userId)
+	tokenID, err = s.repository.CreateOTP(ctx, email)
 
 	if err != nil {
 		return "", err
@@ -241,7 +255,7 @@ func (s *AuthService) InitForgotPassword(ctx context.Context, userId *UserID) (s
 	return tokenID, nil
 }
 
-func (s *AuthService) ChangePassword(ctx context.Context, f *ForgetAndResetPasswordRequest) error {
+func (s *AuthService) ChangePassword(ctx context.Context, f ForgetAndResetPasswordRequest) error {
 	return s.repository.ChangePassword(ctx, f)
 }
 
@@ -281,26 +295,28 @@ func isPasswordValid(password string) (bool, string) {
 	return true, ""
 }
 
-func (s *AuthService) isUserIDValid(id *UserID) bool {
-	err := s.validate.Var(id, "required,email")
+func (s *AuthService) isEmailValid(email *string) bool {
+	err := s.validate.Var(email, "required,email")
 	if err != nil {
 		return false
 	}
 	return true
 }
 
-func getDefaultUserCredential(id *UserID, password string, request SignUpRequest) *UserCredential {
+func getDefaultUserCredential(password string, request SignUpRequest) *UserCredential {
 
 	return &UserCredential{
 		Password:  password,
 		IsActive:  strings.ToLower(request.Role) == "user",
 		CreatedAt: time.Now(),
-		Id:        *id,
+		Id:        primitive.ObjectID{},
+		Email:     trimAndLowercase(request.Email),
 		UserDetail: &UserDetail{
 			Role:       trimAndLowercase(request.Role),
 			IsVerified: false,
 			FirstName:  strings.TrimSpace(request.FirstName),
 			LastName:   strings.TrimSpace(request.LastName),
+			Username:   strings.TrimSpace(request.Username),
 		},
 	}
 

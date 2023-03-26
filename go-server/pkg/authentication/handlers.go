@@ -67,7 +67,7 @@ func (a *AuthHandler) Signup(ctx context.Context, c *fiber.Ctx) error {
 		})
 	}
 
-	err = a.authService.CreateUser(ctx, req)
+	err = a.authService.CreateUser(ctx, *req)
 
 	if err != nil {
 		status := getFiberStatusFromError(err)
@@ -84,7 +84,7 @@ func (a *AuthHandler) Signup(ctx context.Context, c *fiber.Ctx) error {
 
 func (a *AuthHandler) InitAccountVerification(ctx context.Context, c *fiber.Ctx) error {
 
-	userId, err := extractUserIDFromRequest(c)
+	userId, err := extractEmailFromPathParams(c)
 
 	if err != nil {
 		return err
@@ -108,7 +108,7 @@ func (a *AuthHandler) InitAccountVerification(ctx context.Context, c *fiber.Ctx)
 		})
 	}
 
-	return c.Status(fiber.StatusCreated).JSON(GetOTPCreationResponse(&otpID, (*string)(userId)))
+	return c.Status(fiber.StatusCreated).JSON(GetOTPCreationResponse(&otpID, &userId))
 }
 
 func (a *AuthHandler) VerifyAccount(ctx context.Context, c *fiber.Ctx) error {
@@ -124,7 +124,7 @@ func (a *AuthHandler) VerifyAccount(ctx context.Context, c *fiber.Ctx) error {
 		})
 	}
 
-	err = a.authService.VerifyUser(ctx, &verifyRequest)
+	err = a.authService.VerifyUser(ctx, verifyRequest)
 
 	if err != nil {
 		status := 0
@@ -152,7 +152,7 @@ func (a *AuthHandler) VerifyAccount(ctx context.Context, c *fiber.Ctx) error {
 }
 
 func (a *AuthHandler) InitForgotPassword(ctx context.Context, c *fiber.Ctx) error {
-	userID, err := extractUserIDFromRequest(c)
+	userID, err := extractEmailFromPathParams(c)
 
 	if err != nil {
 		return err
@@ -174,7 +174,7 @@ func (a *AuthHandler) InitForgotPassword(ctx context.Context, c *fiber.Ctx) erro
 		})
 	}
 
-	return c.Status(fiber.StatusCreated).JSON(GetOTPCreationResponse(&otpID, (*string)(userID)))
+	return c.Status(fiber.StatusCreated).JSON(GetOTPCreationResponse(&otpID, &userID))
 }
 
 func (a *AuthHandler) ResetPassword(ctx context.Context, c *fiber.Ctx) error {
@@ -189,7 +189,7 @@ func (a *AuthHandler) ResetPassword(ctx context.Context, c *fiber.Ctx) error {
 		})
 	}
 
-	err = a.authService.ChangePassword(ctx, &verifyRequest)
+	err = a.authService.ChangePassword(ctx, verifyRequest)
 
 	if err != nil {
 		status := 0
@@ -214,25 +214,23 @@ func (a *AuthHandler) ResetPassword(ctx context.Context, c *fiber.Ctx) error {
 
 }
 
-func extractUserIDFromRequest(c *fiber.Ctx) (*UserID, error) {
+func extractEmailFromPathParams(c *fiber.Ctx) (string, error) {
 	email := struct {
 		Email string `params:"email"`
 	}{}
-	var userID UserID
+
 	err := c.ParamsParser(&email)
 
 	emailStr, err := url.QueryUnescape(email.Email)
 
 	if err != nil {
-		return &userID, c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+		return "", c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 			"message": "Invalid request body",
 			"error":   ErrInvalidRequest,
 		})
 	}
 
-	userID = UserID(emailStr)
-
-	return &userID, nil
+	return emailStr, nil
 }
 
 func getFiberStatusFromError(err error) int {

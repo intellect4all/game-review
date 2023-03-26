@@ -7,6 +7,7 @@ type LoginRequest struct {
 
 type SignUpRequest struct {
 	Email     string `json:"email" validate:"required,email"`
+	Username  string `json:"username" validate:"required,ascii"`
 	Password  string `json:"password" validate:"required"`
 	Role      string `json:"role" validate:"required,oneof=user moderator"`
 	FirstName string `json:"firstName" validate:"required,ascii"`

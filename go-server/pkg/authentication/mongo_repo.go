@@ -28,7 +28,7 @@ func NewMongoRepository(mongoDbClient *mongo.Client) *MongoRepository {
 	}
 }
 
-func (m *MongoRepository) CreateNewUser(ctx context.Context, userCredential *UserCredential) error {
+func (m *MongoRepository) CreateNewUser(ctx context.Context, userCredential UserCredential) error {
 
 	_, err := m.mongoDbClient.Database("test").Collection("users").InsertOne(ctx, userCredential)
 
@@ -39,10 +39,18 @@ func (m *MongoRepository) CreateNewUser(ctx context.Context, userCredential *Use
 	return nil
 }
 
-func (m *MongoRepository) GetUserCredential(ctx context.Context, userId UserID) (*UserCredential, error) {
+func (m *MongoRepository) GetUserCredentialByEmail(ctx context.Context, email string) (*UserCredential, error) {
+	return m.getUserCredential(ctx, "email", email)
+}
+
+func (m *MongoRepository) GetUserCredentialById(ctx context.Context, id string) (*UserCredential, error) {
+	return m.getUserCredential(ctx, "_id", id)
+}
+
+func (m *MongoRepository) GetUserCredentialByUserName(ctx context.Context, username string) (*UserCredential, error) {
 	var userCredential UserCredential
 
-	err := m.mongoDbClient.Database("test").Collection("users").FindOne(ctx, bson.D{{"email", userId}}).Decode(&userCredential)
+	err := m.mongoDbClient.Database("test").Collection("users").FindOne(ctx, bson.M{"userDetail.username": username}).Decode(&userCredential)
 	if err != nil {
 
 		return nil, ErrUserNotFound
@@ -51,8 +59,20 @@ func (m *MongoRepository) GetUserCredential(ctx context.Context, userId UserID) 
 	return &userCredential, nil
 }
 
-func (m *MongoRepository) GetUserDetail(ctx context.Context, userId UserID) (*UserDetail, error) {
-	res := m.mongoDbClient.Database("test").Collection("users").FindOne(ctx, bson.D{{"_id", string(userId)}})
+func (m *MongoRepository) getUserCredential(ctx context.Context, field string, value any) (*UserCredential, error) {
+	var userCredential UserCredential
+
+	err := m.mongoDbClient.Database("test").Collection("users").FindOne(ctx, bson.D{{field, value}}).Decode(&userCredential)
+	if err != nil {
+
+		return nil, ErrUserNotFound
+	}
+
+	return &userCredential, nil
+}
+
+func (m *MongoRepository) GetUserDetail(ctx context.Context, email string) (*UserDetail, error) {
+	res := m.mongoDbClient.Database("test").Collection("users").FindOne(ctx, bson.D{{"_id", string(email)}})
 
 	if res.Err() != nil {
 		return nil, res.Err()
@@ -67,8 +87,8 @@ func (m *MongoRepository) GetUserDetail(ctx context.Context, userId UserID) (*Us
 	return userDetail, nil
 }
 
-func (m *MongoRepository) DeleteUser(ctx context.Context, userId UserID) error {
-	res, err := m.mongoDbClient.Database("test").Collection("users").UpdateOne(ctx, bson.D{{"_id", string(userId)}}, bson.D{{"$set", bson.D{{"deleted", true}}}})
+func (m *MongoRepository) DeleteUser(ctx context.Context, email string) error {
+	res, err := m.mongoDbClient.Database("test").Collection("users").UpdateOne(ctx, bson.D{{"_id", string(email)}}, bson.D{{"$set", bson.D{{"deleted", true}}}})
 	if err != nil {
 		return err
 	}
@@ -84,7 +104,7 @@ func (m *MongoRepository) DeleteUser(ctx context.Context, userId UserID) error {
 //	return isCorrectPassword(password, encryptedPassword)
 //}
 
-func (m *MongoRepository) CreateOTP(ctx context.Context, id *UserID) (string, error) {
+func (m *MongoRepository) CreateOTP(ctx context.Context, id string) (string, error) {
 	otpData := getOTPData(id)
 
 	res, err := m.mongoDbClient.Database("test").Collection("otpCodes").InsertOne(ctx, otpData)
@@ -103,10 +123,9 @@ func (m *MongoRepository) CreateOTP(ctx context.Context, id *UserID) (string, er
 }
 
 func sendEmailToUser(data *OtpData) {
-	
 	emailRequest := notifications.EmailRequest{
 		From:    "cool_game_rev.com",
-		To:      data.UserId,
+		To:      data.email,
 		Subject: "Your OTP Code",
 		Body:    GetHtmlTemplate(data),
 	}
@@ -118,14 +137,14 @@ func sendEmailToUser(data *OtpData) {
 	}
 }
 
-func (m *MongoRepository) VerifyUser(ctx context.Context, requestData *VerifyAccountRequest) error {
-	userCred, err := m.GetUserCredential(ctx, UserID(requestData.Email))
+func (m *MongoRepository) VerifyUser(ctx context.Context, requestData VerifyAccountRequest) error {
+	userCred, err := m.GetUserCredentialByEmail(ctx, requestData.Email)
 	if err != nil {
 		return ErrUserNotFound
 	}
 
 	// check if otp code is valid
-	if _, err := m.VerifyOTP(ctx, requestData); err != nil {
+	if _, err := m.VerifyOTP(ctx, &requestData); err != nil {
 		return err
 	}
 
@@ -139,8 +158,8 @@ func (m *MongoRepository) VerifyUser(ctx context.Context, requestData *VerifyAcc
 	return nil
 }
 
-func (m *MongoRepository) ChangePassword(ctx context.Context, f *ForgetAndResetPasswordRequest) error {
-	_, err := m.GetUserCredential(ctx, UserID(f.Email))
+func (m *MongoRepository) ChangePassword(ctx context.Context, f ForgetAndResetPasswordRequest) error {
+	_, err := m.GetUserCredentialByEmail(ctx, f.Email)
 	if err != nil {
 		return ErrUserNotFound
 	}
@@ -213,18 +232,18 @@ func (m *MongoRepository) VerifyOTP(ctx context.Context, requestData *VerifyAcco
 }
 
 type OtpData struct {
-	UserId         string    `bson:"userId"`
+	email          string    `bson:"email"`
 	OtpCode        string    `bson:"otpCode"`
 	Used           bool      `bson:"used"`
 	CreatedTime    time.Time `bson:"createdAt"`
 	ExpirationTime time.Time `bson:"expiresAt"`
 }
 
-func getOTPData(u *UserID) *OtpData {
+func getOTPData(u string) *OtpData {
 	otpCode := generateOTPCode()
 
 	otpData := OtpData{
-		UserId:         string(*u),
+		email:          u,
 		OtpCode:        otpCode,
 		Used:           false,
 		CreatedTime:    time.Now(),
