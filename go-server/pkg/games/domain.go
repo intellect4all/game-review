@@ -28,19 +28,19 @@ type PaginatedResponse[V PaginatedResponseType] struct {
 }
 
 type Pagination struct {
-	Limit        int               `json:"limit"`
-	Offset       int               `json:"offset"`
-	QueryFilters map[string]string `json:"filters"`
+	Limit        int                    `json:"limit"`
+	Offset       int                    `json:"offset"`
+	QueryFilters map[string]interface{} `json:"filters"`
 }
 
 type EmbeddedGameGenre struct {
-	Title string `json:"title"`
-	Slug  string `json:"slug"`
+	Title string `json:"title" bson:"title"`
+	Slug  string `json:"slug" bson:"slug"`
 }
 
 type RatingStats struct {
-	TotalRatings int     `json:"totalRatings"`
-	Average      float64 `json:"average"`
+	TotalRatings int     `json:"totalRatings" bson:"total_ratings"`
+	Average      float64 `json:"average" bson:"average"`
 }
 
 type Game struct {
@@ -208,12 +208,9 @@ func (g *GameService) UpdateGame(ctx context.Context, game *Game) error {
 	return nil
 }
 
-func (g *GameService) DeleteGame(ctx context.Context, game *Game) error {
-	if err := g.validate.Struct(game); err != nil {
-		return err
-	}
+func (g *GameService) DeleteGame(ctx context.Context, id string) error {
 
-	err := g.repository.deleteGame(ctx, game.Id.Hex())
+	err := g.repository.deleteGame(ctx, id)
 	if err != nil {
 		return err
 	}

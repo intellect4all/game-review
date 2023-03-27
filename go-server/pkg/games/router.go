@@ -21,11 +21,23 @@ func router(ctx context.Context, app fiber.Router, handler *GameHandler, middlew
 
 	app.Post("/genres/add", HandleAddGenre(handler, ctx))
 
-	app.Post("/genres/update", HandleUpdateGenre(handler, ctx))
+	app.Put("/genres/update", HandleUpdateGenre(handler, ctx))
 
 	app.Use(middleware.AuthMiddleware(adminOnlyPermission))
 
 	app.Delete("/genres/:slug", HandleDeleteGenre(handler, ctx))
+
+	// games
+
+	app.Post("/add", HandleAddGame(handler, ctx))
+
+	app.Get("/:id", HandleGetGame(handler, ctx))
+
+	app.Get("/", HandleGetGames(handler, ctx))
+
+	app.Put("/:id", HandleUpdateGame(handler, ctx))
+
+	app.Delete("/:id", HandleDeleteGame(handler, ctx))
 
 	return nil
 }

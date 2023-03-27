@@ -210,6 +210,137 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/v1/games": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Gets all games, limits and offset can be used to paginate the results",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "games"
+                ],
+                "summary": "Gets all games",
+                "operationId": "getGames",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "name": "developer",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "name": "genre",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "name": "limit",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "name": "offset",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "name": "publisher",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "name": "released_date",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Success",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/main.JSONResult"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/games.PaginatedResponse-games_Game"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/games/add": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Adds a new game genre",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "games"
+                ],
+                "summary": "Adds a new game",
+                "operationId": "addGame",
+                "parameters": [
+                    {
+                        "description": "addGame request",
+                        "name": "addGenre",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/games.AddGameRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Success",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/main.JSONResult"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/games.AddGameRes"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "409": {
+                        "description": "Game already exists",
+                        "schema": {
+                            "$ref": "#/definitions/main.JSONErrorRes"
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/games/genres": {
             "get": {
                 "security": [
@@ -253,29 +384,11 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/games.PaginatedGameGenres"
+                                            "$ref": "#/definitions/games.PaginatedResponse-games_GameGenre"
                                         }
                                     }
                                 }
                             ]
-                        }
-                    },
-                    "400": {
-                        "description": "Bad request",
-                        "schema": {
-                            "$ref": "#/definitions/main.JSONErrorRes"
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "$ref": "#/definitions/main.JSONErrorRes"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "$ref": "#/definitions/main.JSONErrorRes"
                         }
                     }
                 }
@@ -330,26 +443,8 @@ const docTemplate = `{
                             ]
                         }
                     },
-                    "400": {
-                        "description": "Bad request",
-                        "schema": {
-                            "$ref": "#/definitions/main.JSONErrorRes"
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "$ref": "#/definitions/main.JSONErrorRes"
-                        }
-                    },
                     "409": {
                         "description": "Genre with the same slug already exists",
-                        "schema": {
-                            "$ref": "#/definitions/main.JSONErrorRes"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
                         "schema": {
                             "$ref": "#/definitions/main.JSONErrorRes"
                         }
@@ -358,7 +453,7 @@ const docTemplate = `{
             }
         },
         "/api/v1/games/genres/update": {
-            "post": {
+            "put": {
                 "security": [
                     {
                         "BearerAuth": []
@@ -406,26 +501,8 @@ const docTemplate = `{
                             ]
                         }
                     },
-                    "400": {
-                        "description": "Bad request",
-                        "schema": {
-                            "$ref": "#/definitions/main.JSONErrorRes"
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "$ref": "#/definitions/main.JSONErrorRes"
-                        }
-                    },
                     "404": {
                         "description": "Genre not found",
-                        "schema": {
-                            "$ref": "#/definitions/main.JSONErrorRes"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
                         "schema": {
                             "$ref": "#/definitions/main.JSONErrorRes"
                         }
@@ -476,30 +553,6 @@ const docTemplate = `{
                                 }
                             ]
                         }
-                    },
-                    "400": {
-                        "description": "Bad request",
-                        "schema": {
-                            "$ref": "#/definitions/main.JSONErrorRes"
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "$ref": "#/definitions/main.JSONErrorRes"
-                        }
-                    },
-                    "404": {
-                        "description": "Genre not found",
-                        "schema": {
-                            "$ref": "#/definitions/main.JSONErrorRes"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "$ref": "#/definitions/main.JSONErrorRes"
-                        }
                     }
                 }
             },
@@ -528,6 +581,116 @@ const docTemplate = `{
                     }
                 ],
                 "responses": {
+                    "202": {
+                        "description": "Success",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/main.JSONResult"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "string"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "404": {
+                        "description": "Genre not found",
+                        "schema": {
+                            "$ref": "#/definitions/main.JSONErrorRes"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/games/{id}": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "the slug is required",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "games"
+                ],
+                "summary": "Gets a game",
+                "operationId": "getGame",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "id",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Success",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/main.JSONResult"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/games.Game"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            },
+            "put": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "the id is required",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "games"
+                ],
+                "summary": "Updates a game",
+                "operationId": "updateGame",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "id",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "updateGame request",
+                        "name": "updateGame",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/games.UpdateGameRequest"
+                        }
+                    }
+                ],
+                "responses": {
                     "200": {
                         "description": "Success",
                         "schema": {
@@ -546,26 +709,59 @@ const docTemplate = `{
                             ]
                         }
                     },
-                    "400": {
-                        "description": "Bad request",
+                    "404": {
+                        "description": "Game not found",
                         "schema": {
                             "$ref": "#/definitions/main.JSONErrorRes"
                         }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
+                    }
+                }
+            },
+            "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "the id is required",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "games"
+                ],
+                "summary": "Delete a game",
+                "operationId": "deleteGame",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "id",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "202": {
+                        "description": "Success",
                         "schema": {
-                            "$ref": "#/definitions/main.JSONErrorRes"
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/main.JSONResult"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "string"
+                                        }
+                                    }
+                                }
+                            ]
                         }
                     },
                     "404": {
-                        "description": "Genre not found",
-                        "schema": {
-                            "$ref": "#/definitions/main.JSONErrorRes"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
+                        "description": "Game not found",
                         "schema": {
                             "$ref": "#/definitions/main.JSONErrorRes"
                         }
@@ -1007,7 +1203,8 @@ const docTemplate = `{
                 "lastName",
                 "password",
                 "phone",
-                "role"
+                "role",
+                "username"
             ],
             "properties": {
                 "email": {
@@ -1031,6 +1228,9 @@ const docTemplate = `{
                         "user",
                         "moderator"
                     ]
+                },
+                "username": {
+                    "type": "string"
                 }
             }
         },
@@ -1038,8 +1238,10 @@ const docTemplate = `{
             "type": "object",
             "required": [
                 "firstName",
+                "isVerified",
                 "lastName",
-                "role"
+                "role",
+                "username"
             ],
             "properties": {
                 "firstName": {
@@ -1061,6 +1263,9 @@ const docTemplate = `{
                         "admin",
                         "moderator"
                     ]
+                },
+                "username": {
+                    "type": "string"
                 }
             }
         },
@@ -1082,6 +1287,43 @@ const docTemplate = `{
                     "type": "string"
                 }
             }
+        },
+        "games.AddGameRequest": {
+            "type": "object",
+            "required": [
+                "developer",
+                "genres",
+                "publisher",
+                "releaseDate",
+                "summary",
+                "title"
+            ],
+            "properties": {
+                "developer": {
+                    "type": "string"
+                },
+                "genres": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/games.EmbeddedGameGenre"
+                    }
+                },
+                "publisher": {
+                    "type": "string"
+                },
+                "releaseDate": {
+                    "type": "string"
+                },
+                "summary": {
+                    "type": "string"
+                },
+                "title": {
+                    "type": "string"
+                }
+            }
+        },
+        "games.AddGameRes": {
+            "type": "object"
         },
         "games.AddGenreRequest": {
             "type": "object",
@@ -1120,6 +1362,55 @@ const docTemplate = `{
                 }
             }
         },
+        "games.EmbeddedGameGenre": {
+            "type": "object",
+            "properties": {
+                "slug": {
+                    "type": "string"
+                },
+                "title": {
+                    "type": "string"
+                }
+            }
+        },
+        "games.Game": {
+            "type": "object",
+            "properties": {
+                "createdAt": {
+                    "type": "string"
+                },
+                "developer": {
+                    "type": "string"
+                },
+                "genres": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/games.EmbeddedGameGenre"
+                    }
+                },
+                "id": {
+                    "type": "string"
+                },
+                "isDeleted": {
+                    "type": "boolean"
+                },
+                "publisher": {
+                    "type": "string"
+                },
+                "rating": {
+                    "$ref": "#/definitions/games.RatingStats"
+                },
+                "releaseDate": {
+                    "type": "string"
+                },
+                "summary": {
+                    "type": "string"
+                },
+                "title": {
+                    "type": "string"
+                }
+            }
+        },
         "games.GameGenre": {
             "type": "object",
             "required": [
@@ -1134,6 +1425,9 @@ const docTemplate = `{
                 "desc": {
                     "type": "string"
                 },
+                "isDeleted": {
+                    "type": "boolean"
+                },
                 "slug": {
                     "type": "string"
                 },
@@ -1145,7 +1439,33 @@ const docTemplate = `{
                 }
             }
         },
-        "games.PaginatedGameGenres": {
+        "games.PaginatedResponse-games_Game": {
+            "type": "object",
+            "properties": {
+                "currentPage": {
+                    "type": "integer"
+                },
+                "data": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/games.Game"
+                    }
+                },
+                "hasMore": {
+                    "type": "boolean"
+                },
+                "itemsPerPage": {
+                    "type": "integer"
+                },
+                "totalItems": {
+                    "type": "integer"
+                },
+                "totalPages": {
+                    "type": "integer"
+                }
+            }
+        },
+        "games.PaginatedResponse-games_GameGenre": {
             "type": "object",
             "properties": {
                 "currentPage": {
@@ -1168,6 +1488,43 @@ const docTemplate = `{
                 },
                 "totalPages": {
                     "type": "integer"
+                }
+            }
+        },
+        "games.RatingStats": {
+            "type": "object",
+            "properties": {
+                "average": {
+                    "type": "number"
+                },
+                "totalRatings": {
+                    "type": "integer"
+                }
+            }
+        },
+        "games.UpdateGameRequest": {
+            "type": "object",
+            "properties": {
+                "developer": {
+                    "type": "string"
+                },
+                "genres": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/games.EmbeddedGameGenre"
+                    }
+                },
+                "publisher": {
+                    "type": "string"
+                },
+                "releaseDate": {
+                    "type": "string"
+                },
+                "summary": {
+                    "type": "string"
+                },
+                "title": {
+                    "type": "string"
                 }
             }
         },
@@ -1202,9 +1559,9 @@ const docTemplate = `{
 // SwaggerInfo holds exported Swagger Info so clients can modify it
 var SwaggerInfo = &swag.Spec{
 	Version:          "1.0",
-	Host:             "localhost:3000",
+	Host:             "",
 	BasePath:         "/",
-	Schemes:          []string{"http"},
+	Schemes:          []string{"http", "https"},
 	Title:            "Game Review API",
 	Description:      "This is an Api AuthService for Cool Game Review Api.",
 	InfoInstanceName: "swagger",

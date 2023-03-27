@@ -87,7 +87,7 @@ func GetGenresErrorResponse(c *fiber.Ctx, err error) error {
 	})
 }
 
-func GetGenresSuccessResp(c *fiber.Ctx, genreResp *PaginatedGameGenres) error {
+func GetGenresSuccessResp(c *fiber.Ctx, genreResp *PaginatedResponse[GameGenre]) error {
 	return c.Status(fiber.StatusOK).JSON(&fiber.Map{
 		"message": "Game genres",
 		"data":    genreResp,
@@ -153,6 +153,156 @@ func DeleteGenreErrorResponse(c *fiber.Ctx, err error) error {
 func DeleteGenreSuccessResp(c *fiber.Ctx) error {
 	return c.Status(fiber.StatusAccepted).JSON(&fiber.Map{
 		"message": "Game genre deleted",
+		"data":    "",
+	})
+}
+
+func AddGameErrorResponse(c *fiber.Ctx, err error) error {
+	status := 0
+	message := ""
+
+	if err == ErrBadRequest {
+		status = fiber.StatusBadRequest
+		message = "Invalid request body"
+	} else if err == ErrGameAlreadyExists {
+		status = fiber.StatusConflict
+		message = "Game already existed"
+	} else {
+		status = 500
+		message = "Something went wrong"
+	}
+
+	return c.Status(status).JSON(fiber.Map{
+		"message": message,
+		"error":   err.Error(),
+	})
+}
+
+type AddGameRes struct {
+	gameId string `json:"gameId"`
+}
+
+func AddGameSuccessResp(c *fiber.Ctx, id string) error {
+	return c.Status(fiber.StatusCreated).JSON(&fiber.Map{
+		"message": "Game added",
+		"data":    AddGameRes{gameId: id},
+	})
+}
+
+func GetGameErrorResponse(c *fiber.Ctx, err error) error {
+	status := 0
+	message := ""
+
+	if err == ErrBadRequest {
+		status = fiber.StatusBadRequest
+		message = "Invalid request body"
+	} else if err == ErrGameIdRequired {
+		status = fiber.StatusBadRequest
+		message = "Game id is required"
+	} else if err == ErrNotFound {
+		status = fiber.StatusNotFound
+		message = "Game not found"
+	} else {
+		status = 500
+		message = "Something went wrong"
+	}
+
+	return c.Status(status).JSON(fiber.Map{
+		"message": message,
+		"error":   err.Error(),
+	})
+}
+
+func GetGameSuccessResp(c *fiber.Ctx, game *Game) error {
+	return c.Status(fiber.StatusOK).JSON(&fiber.Map{
+		"message": "Game",
+		"data":    game,
+	})
+}
+
+func GetGamesErrorResponse(c *fiber.Ctx, err error) error {
+	status := 0
+	message := ""
+
+	if err == ErrBadRequest {
+		status = fiber.StatusBadRequest
+		message = "Invalid request body"
+	} else {
+		status = 500
+		message = "Something went wrong"
+	}
+
+	return c.Status(status).JSON(fiber.Map{
+		"message": message,
+		"error":   err.Error(),
+	})
+}
+
+func GetGamesSuccessResp(c *fiber.Ctx, gamesResponse *PaginatedResponse[Game]) error {
+	return c.Status(fiber.StatusOK).JSON(&fiber.Map{
+		"message": "Games",
+		"data":    gamesResponse,
+	})
+}
+
+func UpdateGameErrorResp(c *fiber.Ctx, err error) error {
+	status := 0
+	message := ""
+
+	if err == ErrBadRequest {
+		status = fiber.StatusBadRequest
+		message = "Invalid request body"
+	} else if err == ErrGameIdRequired {
+		status = fiber.StatusBadRequest
+		message = "Game id is required"
+	} else if err == ErrNotFound {
+		status = fiber.StatusNotFound
+		message = "Game not found"
+	} else {
+		status = 500
+		message = "Something went wrong"
+	}
+
+	return c.Status(status).JSON(fiber.Map{
+		"message": message,
+		"error":   err.Error(),
+	})
+}
+
+func UpdateGameSuccessResp(c *fiber.Ctx) error {
+	return c.Status(fiber.StatusAccepted).JSON(&fiber.Map{
+		"message": "Game updated",
+		"data":    "",
+	})
+}
+
+func DeleteGameErrorResponse(c *fiber.Ctx, err error) error {
+	status := 0
+	message := ""
+
+	if err == ErrBadRequest {
+		status = fiber.StatusBadRequest
+		message = "Invalid request body"
+	} else if err == ErrGameIdRequired {
+		status = fiber.StatusBadRequest
+		message = "Game id is required"
+	} else if err == ErrNotFound {
+		status = fiber.StatusNotFound
+		message = "Game not found"
+	} else {
+		status = 500
+		message = "Something went wrong"
+	}
+
+	return c.Status(status).JSON(fiber.Map{
+		"message": message,
+		"error":   err.Error(),
+	})
+}
+
+func DeleteGameSuccessResp(c *fiber.Ctx) error {
+	return c.Status(fiber.StatusAccepted).JSON(&fiber.Map{
+		"message": "Game deleted",
 		"data":    "",
 	})
 }

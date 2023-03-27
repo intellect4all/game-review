@@ -3,6 +3,8 @@ package games
 import (
 	"context"
 	"github.com/gofiber/fiber/v2"
+	"go.mongodb.org/mongo-driver/bson/primitive"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -137,6 +139,186 @@ func (h *GameHandler) DeleteGenre(ctx context.Context, c *fiber.Ctx) error {
 
 	return DeleteGenreSuccessResp(c)
 
+}
+
+func (h *GameHandler) AddGame(ctx context.Context, c *fiber.Ctx) error {
+	var req AddGameRequest
+
+	err := c.BodyParser(&req)
+
+	if err != nil {
+		return AddGameErrorResponse(c, ErrBadRequest)
+	}
+
+	game := &Game{
+		Title:       req.Title,
+		Summary:     req.Summary,
+		ReleaseDate: req.ReleaseDate,
+		Developer:   req.Developer,
+		Publisher:   req.Publisher,
+		Genres:      req.Genres,
+		Rating:      RatingStats{},
+		CreatedAt:   time.Now(),
+	}
+
+	err = h.service.AddGame(ctx, game)
+
+	if err != nil {
+		return AddGameErrorResponse(c, err)
+	}
+
+	return AddGameSuccessResp(c, game.Id.Hex())
+
+}
+
+func (h *GameHandler) GetGame(ctx context.Context, c *fiber.Ctx) error {
+	id := c.Params("id")
+
+	if id == "" {
+		return GetGameErrorResponse(c, ErrGameIdRequired)
+	}
+
+	game, err := h.service.GetGame(ctx, id)
+
+	if err != nil {
+		return GetGameErrorResponse(c, err)
+	}
+
+	return GetGameSuccessResp(c, game)
+
+}
+
+type GetGamesQueries struct {
+	Limit        int    `json:"limit"`
+	Offset       int    `json:"offset"`
+	ReleasedDate string `json:"released_date"`
+	Developer    string `json:"developer"`
+	Publisher    string `json:"publisher"`
+	Genre        string `json:"genre"`
+}
+
+func (h *GameHandler) GetGames(ctx context.Context, c *fiber.Ctx) error {
+	var req GetGamesQueries
+
+	err := c.QueryParser(&req)
+
+	if err != nil {
+		return GetGamesErrorResponse(c, ErrBadRequest)
+	}
+
+	if req.Limit == 0 {
+		req.Limit = 20
+	}
+
+	if req.Limit > 100 {
+		req.Limit = 100
+	}
+	pagination := Pagination{
+		Limit:  req.Limit,
+		Offset: req.Offset,
+	}
+
+	filters := make(map[string]interface{})
+
+	if req.ReleasedDate != "" {
+		year, mon, day := 0, 0, 0
+		rdStr := strings.TrimSpace(req.ReleasedDate)
+		// break by "-"
+		rdArr := strings.Split(rdStr, "-")
+
+		for i, v := range rdArr {
+			rdArr[i] = strings.TrimSpace(v)
+			switch i {
+			case 1:
+				year, _ = strconv.Atoi(v)
+			case 2:
+				mon, _ = strconv.Atoi(v)
+			case 3:
+				day, _ = strconv.Atoi(v)
+			}
+		}
+
+		releaseDate := time.Date(year, time.Month(mon), day, 0, 0, 0, 0, time.UTC)
+		filters["released_date"] = releaseDate
+	}
+
+	if req.Developer != "" {
+		filters["developer"] = req.Developer
+	}
+
+	if req.Publisher != "" {
+		filters["publisher"] = req.Publisher
+	}
+
+	if req.Genre != "" {
+		filters["genres.slug"] = req.Genre
+	}
+
+	pagination.QueryFilters = filters
+
+	games, err := h.service.GetAllGames(ctx, &pagination)
+
+	if err != nil {
+		return GetGamesErrorResponse(c, err)
+	}
+
+	return GetGamesSuccessResp(c, games)
+}
+
+func (h *GameHandler) UpdateGame(ctx context.Context, c *fiber.Ctx) error {
+	idString := c.Params("id")
+
+	if idString == "" {
+		return UpdateGameErrorResp(c, ErrGameIdRequired)
+	}
+
+	var req UpdateGameRequest
+
+	err := c.BodyParser(&req)
+
+	if err != nil {
+		return UpdateGameErrorResp(c, ErrBadRequest)
+	}
+
+	id, err := primitive.ObjectIDFromHex(idString)
+	if err != nil {
+		return UpdateGameErrorResp(c, ErrBadRequest)
+	}
+
+	game := &Game{
+		Id:          id,
+		Title:       req.Title,
+		Summary:     req.Summary,
+		ReleaseDate: req.ReleaseDate,
+		Developer:   req.Developer,
+		Publisher:   req.Publisher,
+		Genres:      req.Genres,
+	}
+
+	err = h.service.UpdateGame(ctx, game)
+
+	if err != nil {
+		return UpdateGameErrorResp(c, err)
+	}
+
+	return UpdateGameSuccessResp(c)
+
+}
+
+func (h *GameHandler) DeleteGame(ctx context.Context, c *fiber.Ctx) error {
+	id := c.Params("id")
+
+	if id == "" {
+		return DeleteGameErrorResponse(c, ErrGameIdRequired)
+	}
+
+	err := h.service.DeleteGame(ctx, id)
+
+	if err != nil {
+		return DeleteGameErrorResponse(c, err)
+	}
+
+	return DeleteGameSuccessResp(c)
 }
 
 func getSlug(title string) string {

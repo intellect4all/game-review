@@ -15,3 +15,5 @@ var UnknownError = errors.New("internal-server-error")
 var ErrGameGenreSlugRequired = errors.New("game-genre-slug-required")
 
 var ErrGameAlreadyExists = errors.New("game-already-exists")
+
+var ErrGameIdRequired = errors.New("game-id-required")
