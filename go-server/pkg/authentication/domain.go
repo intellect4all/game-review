@@ -43,7 +43,7 @@ type UserCredential struct {
 	Password   string             `json:"password" bson:"password" validate:"required,min=8"`
 	IsActive   bool               `json:"isActive" bson:"isActive"`
 	CreatedAt  time.Time          `json:"createdAt" bson:"createdAt"`
-	UserDetail *UserDetail        `json:"userDetail" bson:"userDetail"`
+	UserDetail *UserDetail        `json:"userDetail" bson:"userDetail,inline"`
 	Email      string             `json:"email" validate:"required,email"`
 }
 
@@ -54,6 +54,7 @@ type UserDetail struct {
 	Phone      string `json:"phone" bson:"phone" validate:"omitempty"`
 	Username   string `json:"username" bson:"username" validate:"required"`
 	Role       string `json:"role" bson:"role" validate:"required,oneof=user admin moderator"`
+	displayPic string `json:"displayPic" bson:"displayPic"`
 }
 
 func NewService(repository AuthRepository, jwtHelper JWTHelper) *AuthService {

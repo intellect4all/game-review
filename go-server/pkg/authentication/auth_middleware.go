@@ -52,6 +52,9 @@ func (a *AuthMiddlewareImpl) AuthMiddleware(authCheck func(claims *JwtClaims) (s
 			})
 		}
 
+		c.Set("userId", claims.Id)
+		c.Set("role", claims.Role)
+
 		return c.Next()
 	}
 }

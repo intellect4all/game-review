@@ -10,10 +10,10 @@ import (
 )
 
 type GameHandler struct {
-	service *GameService
+	service *Service
 }
 
-func NewGameHandler(service *GameService) *GameHandler {
+func NewGameHandler(service *Service) *GameHandler {
 	return &GameHandler{
 		service: service,
 	}

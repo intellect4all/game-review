@@ -17,7 +17,11 @@ func router(ctx context.Context, app fiber.Router, handler *GameHandler, middlew
 
 	app.Get("/genres/:slug", HandleGetGenre(handler, ctx))
 
-	app.Use(middleware.AuthMiddleware(check))
+	app.Get("/:id", HandleGetGame(handler, ctx))
+
+	app.Get("/", HandleGetGames(handler, ctx))
+
+	app.Use(middleware.AuthMiddleware(isAdminOrModerator))
 
 	app.Post("/genres/add", HandleAddGenre(handler, ctx))
 
@@ -27,13 +31,7 @@ func router(ctx context.Context, app fiber.Router, handler *GameHandler, middlew
 
 	app.Delete("/genres/:slug", HandleDeleteGenre(handler, ctx))
 
-	// games
-
 	app.Post("/add", HandleAddGame(handler, ctx))
-
-	app.Get("/:id", HandleGetGame(handler, ctx))
-
-	app.Get("/", HandleGetGames(handler, ctx))
 
 	app.Put("/:id", HandleUpdateGame(handler, ctx))
 
@@ -55,7 +53,7 @@ func allowAllAuthenticated(claims *auth.JwtClaims) (string, bool) {
 	return "", true
 }
 
-func check(claims *auth.JwtClaims) (string, bool) {
+func isAdminOrModerator(claims *auth.JwtClaims) (string, bool) {
 
 	if claims.Role == "admin" || claims.Role == "moderator" {
 		return "", true

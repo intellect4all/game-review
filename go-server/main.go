@@ -11,6 +11,7 @@ import (
 	_ "go-server/docs"
 	"go-server/pkg/authentication"
 	"go-server/pkg/games"
+	"go-server/pkg/reviews"
 	"log"
 	"os"
 )
@@ -68,6 +69,7 @@ func main() {
 
 	err = authentication.Register(initResponse.MongoDbClient, ctx, apiGroup)
 	err = games.Register(initResponse.MongoDbClient, ctx, apiGroup, authNeeds)
+	err = reviews.Register(initResponse.MongoDbClient, ctx, apiGroup, authNeeds)
 
 	if err != nil {
 		log.Fatal(err)

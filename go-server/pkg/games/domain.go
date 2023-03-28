@@ -9,8 +9,8 @@ import (
 	"time"
 )
 
-type GameService struct {
-	repository GameRepository
+type Service struct {
+	repository Repository
 	validate   *validator.Validate
 }
 
@@ -56,14 +56,14 @@ type Game struct {
 	IsDeleted   bool                 `json:"isDeleted" bson:"isDeleted"`
 }
 
-func NewGameService(repository GameRepository) *GameService {
-	return &GameService{
+func NewGameService(repository Repository) *Service {
+	return &Service{
 		validate:   validator.New(),
 		repository: repository,
 	}
 }
 
-type GameRepository interface {
+type Repository interface {
 	saveGameGenre(ctx context.Context, genre *GameGenre) error
 	updateGameGenre(ctx context.Context, genre *GameGenre) error
 	getGameGenre(ctx context.Context, slug string) (*GameGenre, error)
@@ -76,7 +76,7 @@ type GameRepository interface {
 	getAllGames(ctx context.Context, pagination *Pagination) (*PaginatedResponse[Game], error)
 }
 
-func (g *GameService) AddGameGenre(ctx context.Context, genre *GameGenre) error {
+func (g *Service) AddGameGenre(ctx context.Context, genre *GameGenre) error {
 	if err := g.validate.Struct(genre); err != nil {
 		log.Printf("Validation error: %s", err.Error())
 		return err
@@ -97,7 +97,7 @@ func (g *GameService) AddGameGenre(ctx context.Context, genre *GameGenre) error 
 	return nil
 }
 
-func (g *GameService) EditGameGenre(ctx context.Context, genre *GameGenre) error {
+func (g *Service) EditGameGenre(ctx context.Context, genre *GameGenre) error {
 	slug := strings.TrimSpace(genre.Slug)
 
 	if genre.Slug == "" {
@@ -136,7 +136,7 @@ func updateGenre(new *GameGenre, old *GameGenre) {
 	new.UpdatedAt = time.Now()
 }
 
-func (g *GameService) GetGameGenre(ctx context.Context, slug string) (*GameGenre, error) {
+func (g *Service) GetGameGenre(ctx context.Context, slug string) (*GameGenre, error) {
 
 	genre, err := g.repository.getGameGenre(ctx, slug)
 
@@ -147,7 +147,7 @@ func (g *GameService) GetGameGenre(ctx context.Context, slug string) (*GameGenre
 	return genre, nil
 }
 
-func (g *GameService) GetAllGenres(ctx context.Context, pagination *Pagination) (*PaginatedResponse[GameGenre], error) {
+func (g *Service) GetAllGenres(ctx context.Context, pagination *Pagination) (*PaginatedResponse[GameGenre], error) {
 
 	paginatedResponse, err := g.repository.getAllGameGenres(ctx, pagination)
 
@@ -158,18 +158,18 @@ func (g *GameService) GetAllGenres(ctx context.Context, pagination *Pagination) 
 	return paginatedResponse, nil
 }
 
-func (g *GameService) DeleteGameGenre(ctx context.Context, slug string) error {
+func (g *Service) DeleteGameGenre(ctx context.Context, slug string) error {
 
 	_, err := g.repository.getGameGenre(ctx, slug)
 
 	if err != nil {
 		return err
 	}
-	// ideally, we should check if the genre is being used by any game before deleting it
+	// ideally, we should isAdminOrModerator if the genre is being used by any game before deleting it
 	return g.repository.deleteGameGenre(ctx, slug)
 }
 
-func (g *GameService) AddGame(ctx context.Context, newGame *Game) error {
+func (g *Service) AddGame(ctx context.Context, newGame *Game) error {
 	if err := g.validate.Struct(newGame); err != nil {
 		return err
 	}
@@ -189,7 +189,7 @@ func (g *GameService) AddGame(ctx context.Context, newGame *Game) error {
 	return nil
 }
 
-func (g *GameService) UpdateGame(ctx context.Context, game *Game) error {
+func (g *Service) UpdateGame(ctx context.Context, game *Game) error {
 	if err := g.validate.Struct(game); err != nil {
 		return err
 	}
@@ -208,7 +208,7 @@ func (g *GameService) UpdateGame(ctx context.Context, game *Game) error {
 	return nil
 }
 
-func (g *GameService) DeleteGame(ctx context.Context, id string) error {
+func (g *Service) DeleteGame(ctx context.Context, id string) error {
 
 	err := g.repository.deleteGame(ctx, id)
 	if err != nil {
@@ -218,7 +218,7 @@ func (g *GameService) DeleteGame(ctx context.Context, id string) error {
 	return nil
 }
 
-func (g *GameService) GetGame(ctx context.Context, id string) (*Game, error) {
+func (g *Service) GetGame(ctx context.Context, id string) (*Game, error) {
 
 	game, err := g.repository.getGame(ctx, id)
 
@@ -229,7 +229,7 @@ func (g *GameService) GetGame(ctx context.Context, id string) (*Game, error) {
 	return game, nil
 }
 
-func (g *GameService) GetAllGames(ctx context.Context, pagination *Pagination) (*PaginatedResponse[Game], error) {
+func (g *Service) GetAllGames(ctx context.Context, pagination *Pagination) (*PaginatedResponse[Game], error) {
 
 	paginatedResponse, err := g.repository.getAllGames(ctx, pagination)
 

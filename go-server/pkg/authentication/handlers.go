@@ -70,7 +70,10 @@ func (a *AuthHandler) Signup(ctx context.Context, c *fiber.Ctx) error {
 	err = a.authService.CreateUser(ctx, *req)
 
 	if err != nil {
-		status := getFiberStatusFromError(err)
+		status := 500
+		if err == ErrUserAlreadyExists {
+			status = fiber.StatusConflict
+		}
 		return c.Status(status).JSON(fiber.Map{
 			"message": "Error creating user",
 			"error":   err.Error(),
@@ -231,14 +234,4 @@ func extractEmailFromPathParams(c *fiber.Ctx) (string, error) {
 	}
 
 	return emailStr, nil
-}
-
-func getFiberStatusFromError(err error) int {
-	switch err {
-	case ErrUserAlreadyExists:
-		return fiber.StatusConflict
-	default:
-		return fiber.StatusInternalServerError
-	}
-
 }

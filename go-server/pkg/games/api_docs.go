@@ -45,6 +45,7 @@ func HandleAddGenre(handler *GameHandler, ctx context.Context) fiber.Handler {
 //	@Router			/api/v1/games/genres/update [put]
 func HandleUpdateGenre(handler *GameHandler, ctx context.Context) fiber.Handler {
 	return func(c *fiber.Ctx) error {
+		ctx = GetNewContext(ctx, c)
 		return handler.EditGenre(ctx, c)
 	}
 }
@@ -65,7 +66,9 @@ func HandleUpdateGenre(handler *GameHandler, ctx context.Context) fiber.Handler 
 //	@Success		200				{object}	main.JSONResult{data=games.PaginatedResponse[GameGenre]}	"Success"
 //	@Router			/api/v1/games/genres [get]
 func HandleGetGenres(handler *GameHandler, ctx context.Context) fiber.Handler {
+	// set downstream context value
 	return func(c *fiber.Ctx) error {
+		ctx = GetNewContext(ctx, c)
 		return handler.GetGenres(ctx, c)
 	}
 }
@@ -86,6 +89,7 @@ func HandleGetGenres(handler *GameHandler, ctx context.Context) fiber.Handler {
 //	@Router			/api/v1/games/genres/{slug} [get]
 func HandleGetGenre(handler *GameHandler, ctx context.Context) fiber.Handler {
 	return func(c *fiber.Ctx) error {
+		ctx = GetNewContext(ctx, c)
 		return handler.GetGenre(ctx, c)
 	}
 }
@@ -107,6 +111,7 @@ func HandleGetGenre(handler *GameHandler, ctx context.Context) fiber.Handler {
 //	@Router			/api/v1/games/genres/{slug} [delete]
 func HandleDeleteGenre(handler *GameHandler, ctx context.Context) fiber.Handler {
 	return func(c *fiber.Ctx) error {
+		ctx = GetNewContext(ctx, c)
 		return handler.DeleteGenre(ctx, c)
 	}
 }
@@ -129,6 +134,7 @@ func HandleDeleteGenre(handler *GameHandler, ctx context.Context) fiber.Handler 
 //	@Router			/api/v1/games/add [post]
 func HandleAddGame(handler *GameHandler, ctx context.Context) fiber.Handler {
 	return func(c *fiber.Ctx) error {
+		ctx = GetNewContext(ctx, c)
 		return handler.AddGame(ctx, c)
 	}
 }
@@ -149,6 +155,7 @@ func HandleAddGame(handler *GameHandler, ctx context.Context) fiber.Handler {
 //	@Router			/api/v1/games/{id} [get]
 func HandleGetGame(handler *GameHandler, ctx context.Context) fiber.Handler {
 	return func(c *fiber.Ctx) error {
+		ctx = GetNewContext(ctx, c)
 		return handler.GetGame(ctx, c)
 	}
 }
@@ -170,6 +177,7 @@ func HandleGetGame(handler *GameHandler, ctx context.Context) fiber.Handler {
 //	@Router			/api/v1/games [get]
 func HandleGetGames(handler *GameHandler, ctx context.Context) fiber.Handler {
 	return func(c *fiber.Ctx) error {
+		ctx = GetNewContext(ctx, c)
 		return handler.GetGames(ctx, c)
 	}
 }
@@ -194,6 +202,7 @@ func HandleGetGames(handler *GameHandler, ctx context.Context) fiber.Handler {
 //	@Router			/api/v1/games/{id} [put]
 func HandleUpdateGame(handler *GameHandler, ctx context.Context) fiber.Handler {
 	return func(c *fiber.Ctx) error {
+		ctx = GetNewContext(ctx, c)
 		return handler.UpdateGame(ctx, c)
 	}
 }
@@ -215,6 +224,15 @@ func HandleUpdateGame(handler *GameHandler, ctx context.Context) fiber.Handler {
 //	@Router			/api/v1/games/{id} [delete]
 func HandleDeleteGame(handler *GameHandler, ctx context.Context) fiber.Handler {
 	return func(c *fiber.Ctx) error {
+		ctx = GetNewContext(ctx, c)
 		return handler.DeleteGame(ctx, c)
 	}
+}
+
+func GetNewContext(ctx context.Context, c *fiber.Ctx) context.Context {
+	userId := c.Locals("userId").(string)
+	role := c.Locals("role").(string)
+	ctx = context.WithValue(ctx, "userId", userId)
+	ctx = context.WithValue(ctx, "role", role)
+	return ctx
 }
