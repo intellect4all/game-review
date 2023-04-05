@@ -27,7 +27,7 @@ func (a *AuthHandler) Login(ctx context.Context, c *fiber.Ctx) error {
 		})
 	}
 
-	userData, jwt, err := a.authService.AuthenticateUser(ctx, &req)
+	loginDto, err := a.authService.AuthenticateUser(ctx, &req)
 	if err != nil {
 		var status int
 		var message string
@@ -51,7 +51,7 @@ func (a *AuthHandler) Login(ctx context.Context, c *fiber.Ctx) error {
 		})
 	}
 
-	return c.Status(fiber.StatusOK).JSON(GetLoginSuccessResponse(jwt, userData))
+	return c.Status(fiber.StatusOK).JSON(GetLoginSuccessResponse(loginDto))
 
 }
 
@@ -61,28 +61,30 @@ func (a *AuthHandler) Signup(ctx context.Context, c *fiber.Ctx) error {
 	err := c.BodyParser(&req)
 
 	if err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-			"message": "Invalid request body",
-			"error":   err.Error(),
-		})
+		return SignUpErrorResponse(c, ErrBadRequest)
 	}
 
 	err = a.authService.CreateUser(ctx, *req)
 
 	if err != nil {
-		status := 500
-		if err == ErrUserAlreadyExists {
-			status = fiber.StatusConflict
-		}
-		return c.Status(status).JSON(fiber.Map{
-			"message": "Error creating user",
-			"error":   err.Error(),
+		return SignUpErrorResponse(c, err)
+	}
+	loginReq := LoginRequest{
+		Email:    req.Email,
+		Password: req.Password,
+	}
+
+	lg, err := a.authService.AuthenticateUser(ctx, &loginReq)
+
+	if err != nil {
+		return c.Status(fiber.StatusMultiStatus).JSON(fiber.Map{
+			"message": "Proceed to login",
+			"error":   "User created successfully. Proceed to login",
 		})
 	}
 
-	return c.Status(fiber.StatusCreated).JSON(fiber.Map{
-		"message": "User created successfully",
-	})
+	return c.Status(fiber.StatusCreated).JSON(GetLoginSuccessResponse(lg))
+
 }
 
 func (a *AuthHandler) InitAccountVerification(ctx context.Context, c *fiber.Ctx) error {
@@ -155,13 +157,13 @@ func (a *AuthHandler) VerifyAccount(ctx context.Context, c *fiber.Ctx) error {
 }
 
 func (a *AuthHandler) InitForgotPassword(ctx context.Context, c *fiber.Ctx) error {
-	userID, err := extractEmailFromPathParams(c)
+	email, err := extractEmailFromPathParams(c)
 
 	if err != nil {
 		return err
 	}
 
-	otpID, err := a.authService.InitForgotPassword(ctx, userID)
+	otpID, err := a.authService.InitForgotPassword(ctx, email)
 
 	if err != nil {
 		status := 0
@@ -177,7 +179,7 @@ func (a *AuthHandler) InitForgotPassword(ctx context.Context, c *fiber.Ctx) erro
 		})
 	}
 
-	return c.Status(fiber.StatusCreated).JSON(GetOTPCreationResponse(&otpID, &userID))
+	return c.Status(fiber.StatusCreated).JSON(GetOTPCreationResponse(&otpID, &email))
 }
 
 func (a *AuthHandler) ResetPassword(ctx context.Context, c *fiber.Ctx) error {

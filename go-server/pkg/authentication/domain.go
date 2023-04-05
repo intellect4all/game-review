@@ -7,6 +7,7 @@ import (
 	"github.com/golang-jwt/jwt"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"golang.org/x/crypto/bcrypt"
+	"log"
 	"strings"
 	"time"
 	"unicode"
@@ -35,6 +36,10 @@ func (c *JwtClaims) fromMap(claims map[string]interface{}) *JwtClaims {
 }
 
 func (c *JwtClaims) Validate() error {
+	err := c.Valid()
+	if err != nil {
+		return err
+	}
 	return validator.New().Struct(c)
 }
 
@@ -44,17 +49,26 @@ type UserCredential struct {
 	IsActive   bool               `json:"isActive" bson:"isActive"`
 	CreatedAt  time.Time          `json:"createdAt" bson:"createdAt"`
 	UserDetail *UserDetail        `json:"userDetail" bson:"userDetail,inline"`
-	Email      string             `json:"email" validate:"required,email"`
 }
 
 type UserDetail struct {
-	IsVerified bool   `json:"isVerified" bson:"isVerified" validate:"required"`
-	FirstName  string `json:"firstName" bson:"firstName" validate:"required"`
-	LastName   string `json:"lastName" bson:"lastName" validate:"required"`
-	Phone      string `json:"phone" bson:"phone" validate:"omitempty"`
-	Username   string `json:"username" bson:"username" validate:"required"`
-	Role       string `json:"role" bson:"role" validate:"required,oneof=user admin moderator"`
-	displayPic string `json:"displayPic" bson:"displayPic"`
+	IsVerified bool     `json:"isVerified" bson:"isVerified" validate:"required"`
+	FirstName  string   `json:"firstName" bson:"firstName" validate:"required"`
+	LastName   string   `json:"lastName" bson:"lastName" validate:"required"`
+	Phone      string   `json:"phone" bson:"phone" validate:"omitempty"`
+	Username   string   `json:"username" bson:"username" validate:"required"`
+	Role       string   `json:"role" bson:"role" validate:"required,oneof=user admin moderator"`
+	DisplayPic string   `json:"displayPic" bson:"displayPic"`
+	Email      string   `json:"email" validate:"required,email"`
+	Location   Location `json:"location" bson:"location"`
+}
+
+type Location struct {
+	City        string  `json:"city" bson:"city"`
+	Country     string  `json:"country" bson:"country"`
+	Latitude    float64 `json:"latitude" bson:"latitude"`
+	Longitude   float64 `json:"longitude" bson:"longitude"`
+	CountryCode string  `json:"countryCode" bson:"countryCode"`
 }
 
 func NewService(repository AuthRepository, jwtHelper JWTHelper) *AuthService {
@@ -110,20 +124,24 @@ func (s *AuthService) CreateUser(ctx context.Context, signUpRequest SignUpReques
 	}
 
 	// check if username already exists
-
 	_, err = s.repository.GetUserCredentialByUserName(ctx, signUpRequest.Username)
 
 	if err == nil {
+		log.Println("email does not exist but username already exists")
 		return ErrUsernameAlreadyExists
 	}
 
+	log.Println("email does not exist and username does not exist")
+
 	if ok, errMessage := isPasswordValid(signUpRequest.Password); !ok {
+		log.Println("password is not valid: ", errMessage)
 		return errors.New("Invalid Password: " + errMessage)
 	}
 
 	// encrypt password
 	hashedPassword, err := encryptPassword(signUpRequest.Password)
 	if err != nil {
+		log.Println("error while encrypting password: ", err)
 		return UnknownError
 	}
 
@@ -132,35 +150,42 @@ func (s *AuthService) CreateUser(ctx context.Context, signUpRequest SignUpReques
 	err = s.repository.CreateNewUser(ctx, *userCred)
 
 	if err != nil {
+		log.Println("error while creating new user: ", err)
 		return err
 	}
 
 	return nil
 }
 
-func (s *AuthService) AuthenticateUser(ctx context.Context, loginRequest *LoginRequest) (detail *UserDetail, jwtToken *AuthenticatedUserJWT, err error) {
-	userId := strings.ToLower(loginRequest.Email)
-	userCredentialFromDb, err := s.repository.GetUserCredentialByEmail(ctx, userId)
+type LoginDTO struct {
+	User *UserDetail           `json:"userDetails"`
+	JWT  *AuthenticatedUserJWT `json:"jwt"`
+	Id   string                `json:"userId"`
+}
+
+func (s *AuthService) AuthenticateUser(ctx context.Context, loginRequest *LoginRequest) (*LoginDTO, error) {
+	email := strings.ToLower(loginRequest.Email)
+	userCredentialFromDb, err := s.repository.GetUserCredentialByEmail(ctx, email)
 	if err != nil {
-		return
+		return nil, err
 	}
 
 	if !isCorrectPassword(loginRequest.Password, userCredentialFromDb.Password) {
 		err = ErrInvalidCredentials
-		return
+		return nil, err
 	}
 
 	if !userCredentialFromDb.IsActive {
 		err = ErrAccountInactive
-		return
+		return nil, err
 	}
 
-	detail = userCredentialFromDb.UserDetail
+	detail := userCredentialFromDb.UserDetail
 
 	claims := JwtClaims{
 		Id:         userCredentialFromDb.Id.Hex(),
 		Role:       userCredentialFromDb.UserDetail.Role,
-		Email:      userCredentialFromDb.Email,
+		Email:      userCredentialFromDb.UserDetail.Email,
 		IsVerified: userCredentialFromDb.UserDetail.IsVerified,
 		StandardClaims: jwt.StandardClaims{
 			ExpiresAt: time.Now().Add(time.Hour * 24).Unix(),
@@ -170,8 +195,12 @@ func (s *AuthService) AuthenticateUser(ctx context.Context, loginRequest *LoginR
 		},
 	}
 
-	jwtToken, err = s.jwtHelper.GenerateJWT(&claims)
-	return
+	jwtToken, err := s.jwtHelper.GenerateJWT(&claims)
+	return &LoginDTO{
+		User: detail,
+		JWT:  jwtToken,
+		Id:   userCredentialFromDb.Id.Hex(),
+	}, nil
 }
 
 func (s *AuthService) refreshJWT(jwt AuthenticatedUserJWT) (token *AuthenticatedUserJWT, err error) {
@@ -310,14 +339,16 @@ func getDefaultUserCredential(password string, request SignUpRequest) *UserCrede
 		Password:  password,
 		IsActive:  strings.ToLower(request.Role) == "user",
 		CreatedAt: time.Now(),
-		Id:        primitive.ObjectID{},
-		Email:     trimAndLowercase(request.Email),
+		Id:        primitive.NewObjectID(),
 		UserDetail: &UserDetail{
 			Role:       trimAndLowercase(request.Role),
 			IsVerified: false,
 			FirstName:  strings.TrimSpace(request.FirstName),
 			LastName:   strings.TrimSpace(request.LastName),
 			Username:   strings.TrimSpace(request.Username),
+			Email:      trimAndLowercase(request.Email),
+			Phone:      strings.TrimSpace(request.Phone),
+			Location:   request.Location,
 		},
 	}
 

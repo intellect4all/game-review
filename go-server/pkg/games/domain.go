@@ -39,8 +39,8 @@ type EmbeddedGameGenre struct {
 }
 
 type RatingStats struct {
-	TotalRatings int     `json:"totalRatings" bson:"total_ratings"`
-	Average      float64 `json:"average" bson:"average"`
+	Sum   int `json:"sum" bson:"sum"`
+	Count int `json:"count" bson:"count"`
 }
 
 type Game struct {
@@ -54,6 +54,7 @@ type Game struct {
 	Rating      RatingStats          `json:"rating" bson:"rating"`
 	CreatedAt   time.Time            `json:"createdAt" bson:"createdAt"`
 	IsDeleted   bool                 `json:"isDeleted" bson:"isDeleted"`
+	Image       string               `json:"image" bson:"image"`
 }
 
 func NewGameService(repository Repository) *Service {
@@ -230,10 +231,11 @@ func (g *Service) GetGame(ctx context.Context, id string) (*Game, error) {
 }
 
 func (g *Service) GetAllGames(ctx context.Context, pagination *Pagination) (*PaginatedResponse[Game], error) {
-
+	log.Println("GetAllGames")
 	paginatedResponse, err := g.repository.getAllGames(ctx, pagination)
 
 	if err != nil {
+		log.Println("GetAllGames error")
 		return nil, err
 	}
 

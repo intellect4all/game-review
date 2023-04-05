@@ -16,6 +16,7 @@ type AddGameRequest struct {
 	Developer   string               `json:"developer" validate:"required"`
 	Publisher   string               `json:"publisher" validate:"required"`
 	Genres      []*EmbeddedGameGenre `json:"genres" validate:"required"`
+	Image       string               `json:"image" validate:"required"`
 }
 
 type UpdateGameRequest struct {
@@ -25,4 +26,5 @@ type UpdateGameRequest struct {
 	Developer   string               `json:"developer" validate:"omitempty"`
 	Publisher   string               `json:"publisher" validate:"omitempty"`
 	Genres      []*EmbeddedGameGenre `json:"genres" validate:"omitempty"`
+	Image       string               `json:"image" validate:"required"`
 }

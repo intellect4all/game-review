@@ -4,6 +4,7 @@ import (
 	"context"
 	"github.com/gofiber/fiber/v2"
 	"go.mongodb.org/mongo-driver/bson/primitive"
+	"log"
 	"strconv"
 	"strings"
 	"time"
@@ -191,18 +192,20 @@ func (h *GameHandler) GetGame(ctx context.Context, c *fiber.Ctx) error {
 type GetGamesQueries struct {
 	Limit        int    `json:"limit"`
 	Offset       int    `json:"offset"`
-	ReleasedDate string `json:"released_date"`
-	Developer    string `json:"developer"`
-	Publisher    string `json:"publisher"`
-	Genre        string `json:"genre"`
+	ReleasedDate string `json:"released_date,omitempty"`
+	Developer    string `json:"developer,omitempty"`
+	Publisher    string `json:"publisher,omitempty"`
+	Genre        string `json:"genre,omitempty"`
 }
 
 func (h *GameHandler) GetGames(ctx context.Context, c *fiber.Ctx) error {
+	log.Println("getting in query: ")
 	var req GetGamesQueries
 
 	err := c.QueryParser(&req)
 
 	if err != nil {
+		log.Println("getting in query error: ", err)
 		return GetGamesErrorResponse(c, ErrBadRequest)
 	}
 
@@ -217,6 +220,8 @@ func (h *GameHandler) GetGames(ctx context.Context, c *fiber.Ctx) error {
 		Limit:  req.Limit,
 		Offset: req.Offset,
 	}
+
+	log.Println("getting in query: ", req)
 
 	filters := make(map[string]interface{})
 
@@ -242,17 +247,23 @@ func (h *GameHandler) GetGames(ctx context.Context, c *fiber.Ctx) error {
 		filters["released_date"] = releaseDate
 	}
 
+	log.Println("getting in query after rd: ", filters)
+
 	if req.Developer != "" {
 		filters["developer"] = req.Developer
 	}
+	log.Println("getting in query after d: ", filters)
 
 	if req.Publisher != "" {
 		filters["publisher"] = req.Publisher
 	}
+	log.Println("getting in query after p: ", filters)
 
 	if req.Genre != "" {
 		filters["genres.slug"] = req.Genre
 	}
+
+	log.Println("getting in query after g: ", filters)
 
 	pagination.QueryFilters = filters
 

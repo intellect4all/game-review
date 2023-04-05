@@ -9,6 +9,9 @@ func AddReviewErrorResponse(c *fiber.Ctx, err error) error {
 	if err == ErrBadRequest {
 		status = fiber.StatusBadRequest
 		message = "Invalid request body"
+	} else if err == ErrGameNotFound {
+		status = fiber.StatusNotFound
+		message = "Game not found"
 	} else {
 		status = 500
 		message = "Something went wrong"

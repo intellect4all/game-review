@@ -12,6 +12,7 @@ import (
 	"go.mongodb.org/mongo-driver/mongo"
 	"golang.org/x/crypto/bcrypt"
 	"html/template"
+	"log"
 	"math/rand"
 	"time"
 )
@@ -33,6 +34,7 @@ func (m *MongoRepository) CreateNewUser(ctx context.Context, userCredential User
 	_, err := m.mongoDbClient.Database("test").Collection("users").InsertOne(ctx, userCredential)
 
 	if err != nil {
+		log.Println(err)
 		return UnknownError
 	}
 
@@ -50,12 +52,11 @@ func (m *MongoRepository) GetUserCredentialById(ctx context.Context, id string) 
 func (m *MongoRepository) GetUserCredentialByUserName(ctx context.Context, username string) (*UserCredential, error) {
 	var userCredential UserCredential
 
-	err := m.mongoDbClient.Database("test").Collection("users").FindOne(ctx, bson.M{"userDetail.username": username}).Decode(&userCredential)
+	err := m.mongoDbClient.Database("test").Collection("users").FindOne(ctx, bson.M{"username": username}).Decode(&userCredential)
 	if err != nil {
 
 		return nil, ErrUserNotFound
 	}
-
 	return &userCredential, nil
 }
 
@@ -167,7 +168,7 @@ func (m *MongoRepository) ChangePassword(ctx context.Context, f ForgetAndResetPa
 	// check if otp code is valid
 	otpData := VerifyAccountRequest{
 		Email:   f.Email,
-		TokenID: f.TokenID,
+		TokenID: f.TokenId,
 		OTPCode: f.OTPCode,
 	}
 	if _, err := m.VerifyOTP(ctx, &otpData); err != nil {
@@ -264,6 +265,7 @@ func generateOTPCode() string {
 func encryptPassword(password string) (string, error) {
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(password), 14)
 	if err != nil {
+		log.Println("Error encrypting password: ", err)
 		return "", err
 	}
 

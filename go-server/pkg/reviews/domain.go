@@ -51,23 +51,32 @@ type Vote struct {
 }
 
 type User struct {
-	Username string `json:"username" bson:"username"`
-	FullName string `json:"fullName" bson:"fullName"`
-	Avatar   string `json:"avatar" bson:"displayPic"`
-	UserId   string `json:"id" bson:"id"`
+	Username string   `json:"username" bson:"username"`
+	FullName string   `json:"fullName" bson:"fullName"`
+	Avatar   string   `json:"avatar" bson:"displayPic"`
+	UserId   string   `json:"id" bson:"id"`
+	Location Location `json:"location" bson:"location"`
+}
+
+type Location struct {
+	City        string  `json:"city" bson:"city"`
+	Country     string  `json:"country" bson:"country"`
+	Latitude    float64 `json:"latitude" bson:"latitude"`
+	Longitude   float64 `json:"longitude" bson:"longitude"`
+	CountryCode string  `json:"countryCode" bson:"countryCode"`
 }
 
 type Review struct {
-	Rating        int                `json:"rating"`
-	Comment       string             `json:"comment"`
-	CreatedAt     time.Time          `json:"createdAt"`
-	LastUpdatedAt time.Time          `json:"lastUpdatedAt"`
-	GameId        string             `json:"gameId"`
-	Id            primitive.ObjectID `json:"id"`
-	IsDeleted     bool               `json:"isDeleted"`
-	IsFlagged     bool               `json:"isFlagged"`
+	Rating        int                `json:"rating" bson:"rating"`
+	Comment       string             `json:"comment" bson:"comment"`
+	CreatedAt     time.Time          `json:"createdAt" bson:"createdAt"`
+	LastUpdatedAt time.Time          `json:"lastUpdatedAt" bson:"lastUpdatedAt"`
+	GameId        string             `json:"gameId" bson:"gameId"`
+	Id            primitive.ObjectID `json:"id" bson:"id"`
+	IsDeleted     bool               `json:"isDeleted" bson:"isDeleted"`
+	IsFlagged     bool               `json:"isFlagged" bson:"isFlagged"`
 	Votes         int                `json:"votes"`
-	UserId        string             `json:"userId"`
+	UserId        string             `json:"userId"bson:"userId"`
 }
 
 type PaginatedResponseType interface {
@@ -98,6 +107,7 @@ type Repository interface {
 	Vote(ctx context.Context, req VoteRequest, shouldUpvote bool) error
 	GetVote(ctx context.Context, userId string, gameId string) (*Vote, error)
 	GetFlaggedReviews(ctx context.Context, gameId string, limit int, offset int) (*PaginatedResponse[Review], error)
+	UpdateReviewStats(ctx context.Context, id string, rating int) error
 }
 
 func NewService(r Repository) *Service {
@@ -139,7 +149,10 @@ func (s *Service) addReview(ctx context.Context, r *AddReview) (string, error) {
 
 	go func() {
 		defer waitGroup.Done()
-		s.updateReviewStats(ctx, r)
+		err := s.updateReviewStats(ctx, r)
+		if err != nil {
+			return
+		}
 	}()
 
 	waitGroup.Wait()
@@ -394,8 +407,10 @@ func (s *Service) checkForPossibleOffensiveContent(ctx context.Context, review R
 
 }
 
-func (s *Service) updateReviewStats(ctx context.Context, r *AddReview) {
+func (s *Service) updateReviewStats(ctx context.Context, r *AddReview) error {
 	// update game stats
+	log.Println("Updating review stats for game: " + r.GameId)
+	return s.repository.UpdateReviewStats(ctx, r.GameId, r.Rating)
 
 }
 

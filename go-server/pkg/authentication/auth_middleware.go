@@ -2,6 +2,7 @@ package authentication
 
 import (
 	"github.com/gofiber/fiber/v2"
+	"log"
 	"strings"
 )
 
@@ -24,6 +25,7 @@ func (a *AuthMiddlewareImpl) AuthMiddleware(authCheck func(claims *JwtClaims) (s
 
 		authHeader := c.Get("Authorization")
 		if authHeader == "" {
+
 			return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
 				"message": "Authorization header not found",
 			})
@@ -46,14 +48,16 @@ func (a *AuthMiddlewareImpl) AuthMiddleware(authCheck func(claims *JwtClaims) (s
 		}
 
 		if message, ok := authCheck(claims); !ok {
-			return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
+			return c.Status(fiber.StatusForbidden).JSON(fiber.Map{
 				"message": message,
 				"error":   "Unauthorized",
 			})
 		}
 
-		c.Set("userId", claims.Id)
-		c.Set("role", claims.Role)
+		c.Locals("userId", claims.Id)
+		c.Locals("role", claims.Role)
+
+		log.Println("user validated")
 
 		return c.Next()
 	}

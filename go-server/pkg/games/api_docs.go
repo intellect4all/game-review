@@ -3,6 +3,7 @@ package games
 import (
 	"context"
 	"github.com/gofiber/fiber/v2"
+	"log"
 )
 
 // HandleAddGenre godoc
@@ -177,7 +178,9 @@ func HandleGetGame(handler *GameHandler, ctx context.Context) fiber.Handler {
 //	@Router			/api/v1/games [get]
 func HandleGetGames(handler *GameHandler, ctx context.Context) fiber.Handler {
 	return func(c *fiber.Ctx) error {
+		log.Println("HandleGetGames")
 		ctx = GetNewContext(ctx, c)
+		log.Println("HandleGetGames 2")
 		return handler.GetGames(ctx, c)
 	}
 }
@@ -230,8 +233,11 @@ func HandleDeleteGame(handler *GameHandler, ctx context.Context) fiber.Handler {
 }
 
 func GetNewContext(ctx context.Context, c *fiber.Ctx) context.Context {
-	userId := c.Locals("userId").(string)
-	role := c.Locals("role").(string)
+	userId := c.Locals("userId")
+	role := c.Locals("role")
+	log.Println("userId", userId)
+	log.Println("role", role)
+
 	ctx = context.WithValue(ctx, "userId", userId)
 	ctx = context.WithValue(ctx, "role", role)
 	return ctx

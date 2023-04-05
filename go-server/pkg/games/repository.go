@@ -6,10 +6,11 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
+	"log"
 )
 
 const (
-	gameGenreCollection = "game-genres"
+	gameGenreCollection = "genres"
 	gamesCollection     = "games"
 )
 
@@ -29,6 +30,7 @@ func (g *GameRepositoryImpl) saveGameGenre(ctx context.Context, genre *GameGenre
 	_, err := g.mongoDbClient.Database("test").Collection(gameGenreCollection).InsertOne(ctx, genre)
 
 	if err != nil {
+
 		return UnknownError
 	}
 
@@ -36,7 +38,6 @@ func (g *GameRepositoryImpl) saveGameGenre(ctx context.Context, genre *GameGenre
 }
 
 func (g *GameRepositoryImpl) updateGameGenre(ctx context.Context, genre *GameGenre) error {
-
 	filter := bson.D{{"slug", genre.Slug}}
 	opts := options.Update().SetUpsert(true)
 	update := bson.D{{"$set", genre}}
@@ -52,7 +53,6 @@ func (g *GameRepositoryImpl) updateGameGenre(ctx context.Context, genre *GameGen
 
 func (g *GameRepositoryImpl) getGameGenre(ctx context.Context, slug string) (*GameGenre, error) {
 	var gameGenre GameGenre
-
 	filter := bson.D{{"slug", slug}, {"isDeleted", false}}
 
 	err := g.mongoDbClient.Database("test").Collection(gameGenreCollection).FindOne(ctx, filter).Decode(&gameGenre)
@@ -66,13 +66,13 @@ func (g *GameRepositoryImpl) getGameGenre(ctx context.Context, slug string) (*Ga
 func (g *GameRepositoryImpl) getAllGameGenres(ctx context.Context, pagination *Pagination) (*PaginatedResponse[GameGenre], error) {
 	var gameGenres []GameGenre
 
-	var response *PaginatedResponse[GameGenre]
+	response := &PaginatedResponse[GameGenre]{}
 
 	limit := int64(pagination.Limit)
 	skip := int64(pagination.Offset)
 
 	filter := bson.D{{"isDeleted", false}}
-	opts := options.Find().SetSort(bson.D{{"dateAdded", -1}, {"updatedAt", -1}}).SetLimit(limit).SetSkip(skip)
+	opts := options.Find().SetSort(bson.D{{"dateAdded", -1}}).SetLimit(limit).SetSkip(skip)
 
 	cursor, err := g.mongoDbClient.Database("test").Collection(gameGenreCollection).Find(ctx, filter, opts)
 
@@ -86,9 +86,20 @@ func (g *GameRepositoryImpl) getAllGameGenres(ctx context.Context, pagination *P
 		return nil, UnknownError
 	}
 
+	if len(gameGenres) == 0 {
+		return &PaginatedResponse[GameGenre]{
+			TotalItems:   0,
+			TotalPages:   0,
+			CurrentPage:  0,
+			ItemsPerPage: 0,
+			HasMore:      false,
+			Data:         []GameGenre{},
+		}, nil
+	}
+
 	response.Data = gameGenres
 
-	count, err := g.mongoDbClient.Database("test").Collection(gameGenreCollection).CountDocuments(ctx, bson.D{})
+	count, err := g.mongoDbClient.Database("test").Collection(gameGenreCollection).CountDocuments(ctx, bson.D{}, options.Count())
 
 	if err != nil {
 		return nil, UnknownError
@@ -134,38 +145,54 @@ func (g *GameRepositoryImpl) getAllGames(ctx context.Context, pagination *Pagina
 
 	var games []Game
 
-	var response *PaginatedResponse[Game]
+	response := &PaginatedResponse[Game]{}
 
 	limit := int64(pagination.Limit)
 	skip := int64(pagination.Offset)
 
-	opts := options.Find().SetSort(bson.D{{"dateAdded", -1}, {"updatedAt", -1}}).SetLimit(limit).SetSkip(skip)
+	opts := options.Find().SetSort(bson.D{{"createdAt", -1}, {"updatedAt", -1}}).SetLimit(limit).SetSkip(skip)
 
 	filter := bson.D{{"isDeleted", false}}
 
 	if pagination.QueryFilters != nil {
+
 		for key, value := range pagination.QueryFilters {
+			log.Println("Key: ", key, " Value: ", value)
 			filter = append(filter, bson.E{Key: key, Value: value})
 		}
 	}
 
-	cursor, err := g.mongoDbClient.Database("test").Collection(gameGenreCollection).Find(ctx, filter, opts)
+	cursor, err := g.mongoDbClient.Database("test").Collection(gamesCollection).Find(ctx, filter, opts)
 
 	if err != nil {
+
 		return nil, UnknownError
 	}
 
 	err = cursor.All(ctx, &games)
 
 	if err != nil {
+
 		return nil, UnknownError
+	}
+
+	if len(games) == 0 {
+		return &PaginatedResponse[Game]{
+			TotalItems:   0,
+			TotalPages:   0,
+			CurrentPage:  0,
+			ItemsPerPage: 0,
+			HasMore:      false,
+			Data:         []Game{},
+		}, nil
 	}
 
 	response.Data = games
 
-	count, err := g.mongoDbClient.Database("test").Collection(gameGenreCollection).CountDocuments(ctx, filter)
+	count, err := g.mongoDbClient.Database("test").Collection(gamesCollection).CountDocuments(ctx, filter, options.Count())
 
 	if err != nil {
+
 		return nil, UnknownError
 	}
 

@@ -19,21 +19,21 @@ func router(ctx context.Context, app fiber.Router, handler *Handler, middleware 
 
 	app.Get("/:id", HandleGetReview(handler, ctx))
 
-	app.Get("/game/:gameId", HandleGetReviewsForFame(handler, ctx))
+	app.Get("/game/:gameId", HandleGetReviewsForGame(handler, ctx))
 
 	app.Get("/user/:userId", HandleGetReviewsForUser(handler, ctx))
 
 	app.Delete("/:id", HandleDeleteReview(handler, ctx))
 
-	app.Post("/upVote/:id", HandleVoteReview(handler, ctx, true))
+	app.Post("/:id/upvote", HandleVoteReview(handler, ctx, true))
 
-	app.Post("/downVote/:id", HandleVoteReview(handler, ctx, false))
+	app.Post("/:id/downvote", HandleVoteReview(handler, ctx, false))
 
 	app.Use(middleware.AuthMiddleware(isAdminOrModerator))
 
 	app.Get("/flagged", HandleGetFlaggedReviews(handler, ctx))
 
-	app.Post("/flag/:id", HandleFlagReview(handler, ctx))
+	app.Post("/:id/flag", HandleFlagReview(handler, ctx))
 
 	return nil
 }

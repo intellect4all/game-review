@@ -9,19 +9,19 @@ import (
 //
 //	@Summary		Login endpoint for all users
 //	@Description	Returns a signed JSON Web Token that can be used to talk to secured endpoints
-//	@Tags			Authentication
+//	@Tags			Account
 //	@ID				login
 //	@Accept			json
 //	@Produce		json
 //
 //	@Param			loginRequest	body		authentication.LoginRequest 	true			"login request"
 //
-//	@Success		200				{object}	main.JSONResult{data=authentication.LoginSuccessResponse}	"success"
+//	@Success		200				{object}	main.JSONResult{data=authentication.LoginDTO}	"success"
 //	@Failure		426				{object}	main.JSONErrorRes											"Account is inactive"
 //	@Failure		400				{object}	main.JSONErrorRes											"Bad request"
 //	@Failure		404				{object}	main.JSONErrorRes											"User not found"
 //	@Failure		500				{object}	main.JSONErrorRes											"Internal Server Error"
-//	@Router			/api/v1/login [post]
+//	@Router			/api/v1/account/login [post]
 func HandleLogin(handler *AuthHandler, ctx context.Context) fiber.Handler {
 	return func(c *fiber.Ctx) error {
 		return handler.Login(ctx, c)
@@ -32,7 +32,7 @@ func HandleLogin(handler *AuthHandler, ctx context.Context) fiber.Handler {
 //
 //	@Summary		Signup endpoint for all users and moderators
 //	@Description	Creates a new User/Moderator on the system. The Moderator will need to be manually activated by an existing admin
-//	@Tags			Onboarding
+//	@Tags			Account
 //	@ID				signup
 //	@Accept			json
 //	@Produce		json
@@ -40,10 +40,13 @@ func HandleLogin(handler *AuthHandler, ctx context.Context) fiber.Handler {
 //	@Param			signUpRequest	body		authentication.SignUpRequest 	true			"signup request"
 //
 //	@Success		200				{object}	main.JSONResult{data=string}	"Success"
+//
+// @Success		207				{object}	main.JSONResult{data=string}	"Success"
+//
 //	@Failure		409				{object}	main.JSONErrorRes					"User already exists"
 //	@Failure		400				{object}	main.JSONErrorRes											"Bad request"
 //	@Failure		500				{object}	main.JSONErrorRes											"Internal Server Error"
-//	@Router			/api/v1/signup [post]
+//	@Router			/api/v1/account/signup [post]
 func HandleSignUp(handler *AuthHandler, ctx context.Context) fiber.Handler {
 	return func(c *fiber.Ctx) error {
 		return handler.Signup(ctx, c)
@@ -57,7 +60,7 @@ func HandleSignUp(handler *AuthHandler, ctx context.Context) fiber.Handler {
 //
 // @Description 	An otp ID is returned, which must submitted alongside the otpCode sent to the mail to the VerifyAccount endpoint.
 //
-//	@Tags			Onboarding
+//	@Tags			Account
 //	@ID				initVerifyAccount
 //	@Accept			json
 //	@Produce		json
@@ -68,7 +71,7 @@ func HandleSignUp(handler *AuthHandler, ctx context.Context) fiber.Handler {
 //	@Failure		404				{object}	main.JSONErrorRes											"No Account Found"
 //	@Failure		409				{object}	main.JSONErrorRes											"User already verified"
 //	@Failure		500				{object}	main.JSONErrorRes											"Internal Server Error"
-//	@Router			/api/v1/verify-account/init/{email} [post]
+//	@Router			/api/v1/account/init-verification/{email} [post]
 func HandleVerifyAccountInit(handler *AuthHandler, ctx context.Context) fiber.Handler {
 	return func(c *fiber.Ctx) error {
 		return handler.InitAccountVerification(ctx, c)
@@ -80,7 +83,7 @@ func HandleVerifyAccountInit(handler *AuthHandler, ctx context.Context) fiber.Ha
 //	@Summary		Complete account verification
 //	@Description	The Endpoint verifies the user account using the otp code sent to the user's email
 //
-//	@Tags			Onboarding
+//	@Tags			Account
 //	@ID				VerifyAccount
 //	@Accept			json
 //	@Produce		json
@@ -92,7 +95,7 @@ func HandleVerifyAccountInit(handler *AuthHandler, ctx context.Context) fiber.Ha
 //	@Failure		404				{object}	main.JSONErrorRes											"No Account Found"
 //	@Failure		409				{object}	main.JSONErrorRes											"User already verified"
 //	@Failure		500				{object}	main.JSONErrorRes											"Internal Server Error"
-//	@Router			/api/v1/verify-account/verify [post]
+//	@Router			/api/v1/account/verify-email [post]
 func HandleVerifyAccount(handler *AuthHandler, ctx context.Context) fiber.Handler {
 	return func(c *fiber.Ctx) error {
 		return handler.VerifyAccount(ctx, c)
@@ -106,7 +109,7 @@ func HandleVerifyAccount(handler *AuthHandler, ctx context.Context) fiber.Handle
 //
 // @Description 	An otp ID is returned, which must submitted alongside the otpCode sent to the mail to the VerifyAccount endpoint.
 //
-//	@Tags			Onboarding
+//	@Tags			Account
 //	@ID				ResendVerificationCode
 //	@Accept			json
 //	@Produce		json
@@ -117,7 +120,7 @@ func HandleVerifyAccount(handler *AuthHandler, ctx context.Context) fiber.Handle
 //	@Failure		404				{object}	main.JSONErrorRes											"No Account Found"
 //	@Failure		409				{object}	main.JSONErrorRes											"User already verified"
 //	@Failure		500				{object}	main.JSONErrorRes											"Internal Server Error"
-//	@Router			/api/v1/verify-account/resend/{email} [post]
+//	@Router			/api/v1/account/verify-email/resend/{email} [post]
 func HandleVerifyAccountResend(handler *AuthHandler, ctx context.Context) fiber.Handler {
 	return func(c *fiber.Ctx) error {
 		return handler.InitAccountVerification(ctx, c)
@@ -131,7 +134,7 @@ func HandleVerifyAccountResend(handler *AuthHandler, ctx context.Context) fiber.
 //
 // @Description 	An otp ID is returned, which must submitted alongside the otpCode sent to the mail to the Forgot password reset endpoint.
 //
-//	@Tags			Authentication
+//	@Tags			Account
 //	@ID				ForgotPasswordInit
 //	@Accept			json
 //	@Produce		json
@@ -141,7 +144,7 @@ func HandleVerifyAccountResend(handler *AuthHandler, ctx context.Context) fiber.
 //	@Success		200				{object}	main.JSONResult{data=authentication.OTPCreationSuccessResponse}	"Success"
 //	@Failure		404				{object}	main.JSONErrorRes											"No Account Found"
 //	@Failure		500				{object}	main.JSONErrorRes											"Internal Server Error"
-//	@Router			/api/v1/forgot-password/init/{email} [post]
+//	@Router			/api/v1/account/forgot-password/init/{email} [post]
 func HandleForgetPassword(handler *AuthHandler, ctx context.Context) fiber.Handler {
 	return func(c *fiber.Ctx) error {
 		return handler.InitForgotPassword(ctx, c)
@@ -153,7 +156,7 @@ func HandleForgetPassword(handler *AuthHandler, ctx context.Context) fiber.Handl
 //	@Summary		Complete Forget password reset
 //	@Description	The Endpoint resets the user password using the otp code sent to the user's email
 //
-//	@Tags			Authentication
+//	@Tags			Account
 //	@ID				ResetPassword
 //	@Accept			json
 //	@Produce		json
@@ -165,7 +168,7 @@ func HandleForgetPassword(handler *AuthHandler, ctx context.Context) fiber.Handl
 //	@Failure		404				{object}	main.JSONErrorRes											"No Account Found"
 //	@Failure		409				{object}	main.JSONErrorRes											"User already verified"
 //	@Failure		500				{object}	main.JSONErrorRes											"Internal Server Error"
-//	@Router			/api/v1/forgot-password/reset [post]
+//	@Router			/api/v1/account/forgot-password/reset [post]
 func HandlePasswordReset(handler *AuthHandler, ctx context.Context) fiber.Handler {
 	return func(c *fiber.Ctx) error {
 		return handler.ResetPassword(ctx, c)
@@ -179,7 +182,7 @@ func HandlePasswordReset(handler *AuthHandler, ctx context.Context) fiber.Handle
 //
 // @Description 	An otp ID is returned, which must submitted alongside the otpCode sent to the mail to the Forgot password reset endpoint.
 //
-//	@Tags			Authentication
+//	@Tags			Account
 //	@ID				ResendForgetPasswordCode
 //	@Accept			json
 //	@Produce		json
@@ -189,7 +192,7 @@ func HandlePasswordReset(handler *AuthHandler, ctx context.Context) fiber.Handle
 //	@Success		200				{object}	main.JSONResult{data=authentication.OTPCreationSuccessResponse}	"Success"
 //	@Failure		404				{object}	main.JSONErrorRes											"No Account Found"
 //	@Failure		500				{object}	main.JSONErrorRes											"Internal Server Error"
-//	@Router			/api/v1/forgot-password/resend/{email} [post]
+//	@Router			/api/v1/account/forgot-password/resend/{email} [post]
 func HandleForgetPasswordResend(handler *AuthHandler, ctx context.Context) fiber.Handler {
 	return func(c *fiber.Ctx) error {
 		return handler.InitForgotPassword(ctx, c)

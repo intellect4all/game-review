@@ -25,7 +25,7 @@ const docTemplate = `{
     "host": "{{.Host}}",
     "basePath": "{{.BasePath}}",
     "paths": {
-        "/api/v1/forgot-password/init/{email}": {
+        "/api/v1/account/forgot-password/init/{email}": {
             "post": {
                 "description": "An otp code is sent to the email if the user account existed.\nAn otp ID is returned, which must submitted alongside the otpCode sent to the mail to the Forgot password reset endpoint.",
                 "consumes": [
@@ -35,7 +35,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "Authentication"
+                    "Account"
                 ],
                 "summary": "Forget password endpoint",
                 "operationId": "ForgotPasswordInit",
@@ -82,7 +82,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/v1/forgot-password/resend/{email}": {
+        "/api/v1/account/forgot-password/resend/{email}": {
             "post": {
                 "description": "An otp code is sent to the email if the user account existed.\nAn otp ID is returned, which must submitted alongside the otpCode sent to the mail to the Forgot password reset endpoint.",
                 "consumes": [
@@ -92,7 +92,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "Authentication"
+                    "Account"
                 ],
                 "summary": "Resend OTP code for Forget password",
                 "operationId": "ResendForgetPasswordCode",
@@ -139,7 +139,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/v1/forgot-password/reset": {
+        "/api/v1/account/forgot-password/reset": {
             "post": {
                 "description": "The Endpoint resets the user password using the otp code sent to the user's email",
                 "consumes": [
@@ -149,7 +149,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "Authentication"
+                    "Account"
                 ],
                 "summary": "Complete Forget password reset",
                 "operationId": "ResetPassword",
@@ -187,6 +187,357 @@ const docTemplate = `{
                         "description": "Bad request",
                         "schema": {
                             "$ref": "#/definitions/main.JSONErrorRes"
+                        }
+                    },
+                    "404": {
+                        "description": "No Account Found",
+                        "schema": {
+                            "$ref": "#/definitions/main.JSONErrorRes"
+                        }
+                    },
+                    "409": {
+                        "description": "User already verified",
+                        "schema": {
+                            "$ref": "#/definitions/main.JSONErrorRes"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/main.JSONErrorRes"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/account/init-verification/{email}": {
+            "post": {
+                "description": "An otp code is sent to the email if the user account existed.\nAn otp ID is returned, which must submitted alongside the otpCode sent to the mail to the VerifyAccount endpoint.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Account"
+                ],
+                "summary": "Initiate user email verification",
+                "operationId": "initVerifyAccount",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Email address",
+                        "name": "email",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Success",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/main.JSONResult"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/authentication.OTPCreationSuccessResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "404": {
+                        "description": "No Account Found",
+                        "schema": {
+                            "$ref": "#/definitions/main.JSONErrorRes"
+                        }
+                    },
+                    "409": {
+                        "description": "User already verified",
+                        "schema": {
+                            "$ref": "#/definitions/main.JSONErrorRes"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/main.JSONErrorRes"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/account/login": {
+            "post": {
+                "description": "Returns a signed JSON Web Token that can be used to talk to secured endpoints",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Account"
+                ],
+                "summary": "Login endpoint for all users",
+                "operationId": "login",
+                "parameters": [
+                    {
+                        "description": "login request",
+                        "name": "loginRequest",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/authentication.LoginRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "success",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/main.JSONResult"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/authentication.LoginDTO"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad request",
+                        "schema": {
+                            "$ref": "#/definitions/main.JSONErrorRes"
+                        }
+                    },
+                    "404": {
+                        "description": "User not found",
+                        "schema": {
+                            "$ref": "#/definitions/main.JSONErrorRes"
+                        }
+                    },
+                    "426": {
+                        "description": "Account is inactive",
+                        "schema": {
+                            "$ref": "#/definitions/main.JSONErrorRes"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/main.JSONErrorRes"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/account/signup": {
+            "post": {
+                "description": "Creates a new User/Moderator on the system. The Moderator will need to be manually activated by an existing admin",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Account"
+                ],
+                "summary": "Signup endpoint for all users and moderators",
+                "operationId": "signup",
+                "parameters": [
+                    {
+                        "description": "signup request",
+                        "name": "signUpRequest",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/authentication.SignUpRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Success",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/main.JSONResult"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "string"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "207": {
+                        "description": "Success",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/main.JSONResult"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "string"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad request",
+                        "schema": {
+                            "$ref": "#/definitions/main.JSONErrorRes"
+                        }
+                    },
+                    "409": {
+                        "description": "User already exists",
+                        "schema": {
+                            "$ref": "#/definitions/main.JSONErrorRes"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/main.JSONErrorRes"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/account/verify-email": {
+            "post": {
+                "description": "The Endpoint verifies the user account using the otp code sent to the user's email",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Account"
+                ],
+                "summary": "Complete account verification",
+                "operationId": "VerifyAccount",
+                "parameters": [
+                    {
+                        "description": "OtpID data",
+                        "name": "verifyAccountRequest",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/authentication.VerifyAccountRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Success",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/main.JSONResult"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "string"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad request",
+                        "schema": {
+                            "$ref": "#/definitions/main.JSONErrorRes"
+                        }
+                    },
+                    "404": {
+                        "description": "No Account Found",
+                        "schema": {
+                            "$ref": "#/definitions/main.JSONErrorRes"
+                        }
+                    },
+                    "409": {
+                        "description": "User already verified",
+                        "schema": {
+                            "$ref": "#/definitions/main.JSONErrorRes"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/main.JSONErrorRes"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/account/verify-email/resend/{email}": {
+            "post": {
+                "description": "An otp code is sent to the email if the user account existed.\nAn otp ID is returned, which must submitted alongside the otpCode sent to the mail to the VerifyAccount endpoint.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Account"
+                ],
+                "summary": "Resend OTP code for account verification",
+                "operationId": "ResendVerificationCode",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Email address",
+                        "name": "email",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Success",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/main.JSONResult"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/authentication.OTPCreationSuccessResponse"
+                                        }
+                                    }
+                                }
+                            ]
                         }
                     },
                     "404": {
@@ -769,77 +1120,6 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/v1/login": {
-            "post": {
-                "description": "Returns a signed JSON Web Token that can be used to talk to secured endpoints",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Authentication"
-                ],
-                "summary": "Login endpoint for all users",
-                "operationId": "login",
-                "parameters": [
-                    {
-                        "description": "login request",
-                        "name": "loginRequest",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/authentication.LoginRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "success",
-                        "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/main.JSONResult"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "$ref": "#/definitions/authentication.LoginSuccessResponse"
-                                        }
-                                    }
-                                }
-                            ]
-                        }
-                    },
-                    "400": {
-                        "description": "Bad request",
-                        "schema": {
-                            "$ref": "#/definitions/main.JSONErrorRes"
-                        }
-                    },
-                    "404": {
-                        "description": "User not found",
-                        "schema": {
-                            "$ref": "#/definitions/main.JSONErrorRes"
-                        }
-                    },
-                    "426": {
-                        "description": "Account is inactive",
-                        "schema": {
-                            "$ref": "#/definitions/main.JSONErrorRes"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "$ref": "#/definitions/main.JSONErrorRes"
-                        }
-                    }
-                }
-            }
-        },
         "/api/v1/ping": {
             "get": {
                 "description": "get the status of server.",
@@ -865,9 +1145,14 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/v1/signup": {
+        "/api/v1/reviews/add": {
             "post": {
-                "description": "Creates a new User/Moderator on the system. The Moderator will need to be manually activated by an existing admin",
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Add a review",
                 "consumes": [
                     "application/json"
                 ],
@@ -875,19 +1160,478 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "Onboarding"
+                    "Reviews"
                 ],
-                "summary": "Signup endpoint for all users and moderators",
-                "operationId": "signup",
+                "summary": "Add a review",
+                "operationId": "addReview",
                 "parameters": [
                     {
-                        "description": "signup request",
-                        "name": "signUpRequest",
+                        "description": "addReview request",
+                        "name": "addReview",
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/authentication.SignUpRequest"
+                            "$ref": "#/definitions/reviews.AddReviewRequest"
                         }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Success",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/main.JSONResult"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/reviews.AddReviewRes"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad request",
+                        "schema": {
+                            "$ref": "#/definitions/main.JSONErrorRes"
+                        }
+                    },
+                    "404": {
+                        "description": "Game not found",
+                        "schema": {
+                            "$ref": "#/definitions/main.JSONErrorRes"
+                        }
+                    },
+                    "409": {
+                        "description": "Review already exists",
+                        "schema": {
+                            "$ref": "#/definitions/main.JSONErrorRes"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/reviews/flagged": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Get flagged reviews",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Reviews"
+                ],
+                "summary": "Get flagged reviews",
+                "operationId": "getFlaggedReviews",
+                "parameters": [
+                    {
+                        "description": "getFlaggedRequest request",
+                        "name": "getGameReviews",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/reviews.GetFlaggedReviewsRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Success",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/main.JSONResult"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/reviews.PaginatedResponse-reviews_Review"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad request",
+                        "schema": {
+                            "$ref": "#/definitions/main.JSONErrorRes"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/reviews/game/{gameId}": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Get reviews for a game",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Reviews"
+                ],
+                "summary": "Get reviews for a game",
+                "operationId": "getReviewsForGame",
+                "parameters": [
+                    {
+                        "description": "getGameReviews request",
+                        "name": "getGameReviews",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/reviews.GetReviewsForGame"
+                        }
+                    },
+                    {
+                        "type": "string",
+                        "description": "game id",
+                        "name": "gameId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Success",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/main.JSONResult"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/reviews.PaginatedResponse-reviews_ReviewResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad request",
+                        "schema": {
+                            "$ref": "#/definitions/main.JSONErrorRes"
+                        }
+                    },
+                    "404": {
+                        "description": "Game not found",
+                        "schema": {
+                            "$ref": "#/definitions/main.JSONErrorRes"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/reviews/user/{userId}": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Get all reviews for a user",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Reviews"
+                ],
+                "summary": "Get all reviews for a user",
+                "operationId": "getReviewsForUser",
+                "parameters": [
+                    {
+                        "description": "getGameReviews request",
+                        "name": "getGameReviews",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/reviews.GetReviewsForGame"
+                        }
+                    },
+                    {
+                        "type": "string",
+                        "description": "user id",
+                        "name": "userId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Success",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/main.JSONResult"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/reviews.PaginatedResponse-reviews_ReviewResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad request",
+                        "schema": {
+                            "$ref": "#/definitions/main.JSONErrorRes"
+                        }
+                    },
+                    "404": {
+                        "description": "User not found",
+                        "schema": {
+                            "$ref": "#/definitions/main.JSONErrorRes"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/reviews/{reviewId}": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Get a review",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Reviews"
+                ],
+                "summary": "Get a review",
+                "operationId": "getReview",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "review id",
+                        "name": "reviewId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Success",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/main.JSONResult"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/reviews.ReviewResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad request",
+                        "schema": {
+                            "$ref": "#/definitions/main.JSONErrorRes"
+                        }
+                    },
+                    "404": {
+                        "description": "Review not found",
+                        "schema": {
+                            "$ref": "#/definitions/main.JSONErrorRes"
+                        }
+                    }
+                }
+            },
+            "put": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Update a review",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Reviews"
+                ],
+                "summary": "Update a review",
+                "operationId": "updateReview",
+                "parameters": [
+                    {
+                        "description": "update review request",
+                        "name": "addReview",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/reviews.AddReviewRequest"
+                        }
+                    },
+                    {
+                        "type": "string",
+                        "description": "review id",
+                        "name": "reviewId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Success",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/main.JSONResult"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/reviews.AddReviewRes"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad request",
+                        "schema": {
+                            "$ref": "#/definitions/main.JSONErrorRes"
+                        }
+                    },
+                    "404": {
+                        "description": "Review not found",
+                        "schema": {
+                            "$ref": "#/definitions/main.JSONErrorRes"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Delete a review",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Reviews"
+                ],
+                "summary": "Delete a review",
+                "operationId": "deleteReview",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "review id",
+                        "name": "reviewId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Success",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/main.JSONResult"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/reviews.AddReviewRes"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad request",
+                        "schema": {
+                            "$ref": "#/definitions/main.JSONErrorRes"
+                        }
+                    },
+                    "404": {
+                        "description": "Review not found",
+                        "schema": {
+                            "$ref": "#/definitions/main.JSONErrorRes"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/reviews/{reviewId}/downvote": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Upvote a review",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Reviews"
+                ],
+                "summary": "Upvote a review",
+                "operationId": "downvoteReview",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "review id",
+                        "name": "reviewId",
+                        "in": "path",
+                        "required": true
                     }
                 ],
                 "responses": {
@@ -915,14 +1659,8 @@ const docTemplate = `{
                             "$ref": "#/definitions/main.JSONErrorRes"
                         }
                     },
-                    "409": {
-                        "description": "User already exists",
-                        "schema": {
-                            "$ref": "#/definitions/main.JSONErrorRes"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
+                    "404": {
+                        "description": "Review not found",
                         "schema": {
                             "$ref": "#/definitions/main.JSONErrorRes"
                         }
@@ -930,9 +1668,14 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/v1/verify-account/init/{email}": {
+        "/api/v1/reviews/{reviewId}/flag": {
             "post": {
-                "description": "An otp code is sent to the email if the user account existed.\nAn otp ID is returned, which must submitted alongside the otpCode sent to the mail to the VerifyAccount endpoint.",
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Flag a review",
                 "consumes": [
                     "application/json"
                 ],
@@ -940,145 +1683,17 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "Onboarding"
+                    "Reviews"
                 ],
-                "summary": "Initiate user email verification",
-                "operationId": "initVerifyAccount",
+                "summary": "Flag a review",
+                "operationId": "flagReview",
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "Email address",
-                        "name": "email",
+                        "description": "review id",
+                        "name": "reviewId",
                         "in": "path",
                         "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Success",
-                        "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/main.JSONResult"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "$ref": "#/definitions/authentication.OTPCreationSuccessResponse"
-                                        }
-                                    }
-                                }
-                            ]
-                        }
-                    },
-                    "404": {
-                        "description": "No Account Found",
-                        "schema": {
-                            "$ref": "#/definitions/main.JSONErrorRes"
-                        }
-                    },
-                    "409": {
-                        "description": "User already verified",
-                        "schema": {
-                            "$ref": "#/definitions/main.JSONErrorRes"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "$ref": "#/definitions/main.JSONErrorRes"
-                        }
-                    }
-                }
-            }
-        },
-        "/api/v1/verify-account/resend/{email}": {
-            "post": {
-                "description": "An otp code is sent to the email if the user account existed.\nAn otp ID is returned, which must submitted alongside the otpCode sent to the mail to the VerifyAccount endpoint.",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Onboarding"
-                ],
-                "summary": "Resend OTP code for account verification",
-                "operationId": "ResendVerificationCode",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Email address",
-                        "name": "email",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Success",
-                        "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/main.JSONResult"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "$ref": "#/definitions/authentication.OTPCreationSuccessResponse"
-                                        }
-                                    }
-                                }
-                            ]
-                        }
-                    },
-                    "404": {
-                        "description": "No Account Found",
-                        "schema": {
-                            "$ref": "#/definitions/main.JSONErrorRes"
-                        }
-                    },
-                    "409": {
-                        "description": "User already verified",
-                        "schema": {
-                            "$ref": "#/definitions/main.JSONErrorRes"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "$ref": "#/definitions/main.JSONErrorRes"
-                        }
-                    }
-                }
-            }
-        },
-        "/api/v1/verify-account/verify": {
-            "post": {
-                "description": "The Endpoint verifies the user account using the otp code sent to the user's email",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Onboarding"
-                ],
-                "summary": "Complete account verification",
-                "operationId": "VerifyAccount",
-                "parameters": [
-                    {
-                        "description": "OtpID data",
-                        "name": "verifyAccountRequest",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/authentication.VerifyAccountRequest"
-                        }
                     }
                 ],
                 "responses": {
@@ -1107,19 +1722,69 @@ const docTemplate = `{
                         }
                     },
                     "404": {
-                        "description": "No Account Found",
+                        "description": "Review not found",
+                        "schema": {
+                            "$ref": "#/definitions/main.JSONErrorRes"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/reviews/{reviewId}/upvote": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Upvote a review",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Reviews"
+                ],
+                "summary": "Upvote a review",
+                "operationId": "upvoteReview",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "review id",
+                        "name": "reviewId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Success",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/main.JSONResult"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "string"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad request",
                         "schema": {
                             "$ref": "#/definitions/main.JSONErrorRes"
                         }
                     },
-                    "409": {
-                        "description": "User already verified",
-                        "schema": {
-                            "$ref": "#/definitions/main.JSONErrorRes"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
+                    "404": {
+                        "description": "Review not found",
                         "schema": {
                             "$ref": "#/definitions/main.JSONErrorRes"
                         }
@@ -1136,7 +1801,7 @@ const docTemplate = `{
                 "email",
                 "otpCode",
                 "password",
-                "tokenID"
+                "tokenId"
             ],
             "properties": {
                 "confirmPassword": {
@@ -1153,7 +1818,41 @@ const docTemplate = `{
                     "type": "string",
                     "minLength": 8
                 },
-                "tokenID": {
+                "tokenId": {
+                    "type": "string"
+                }
+            }
+        },
+        "authentication.Location": {
+            "type": "object",
+            "properties": {
+                "city": {
+                    "type": "string"
+                },
+                "country": {
+                    "type": "string"
+                },
+                "countryCode": {
+                    "type": "string"
+                },
+                "latitude": {
+                    "type": "number"
+                },
+                "longitude": {
+                    "type": "number"
+                }
+            }
+        },
+        "authentication.LoginDTO": {
+            "type": "object",
+            "properties": {
+                "jwt": {
+                    "type": "string"
+                },
+                "userDetails": {
+                    "$ref": "#/definitions/authentication.UserDetail"
+                },
+                "userId": {
                     "type": "string"
                 }
             }
@@ -1170,17 +1869,6 @@ const docTemplate = `{
                 },
                 "password": {
                     "type": "string"
-                }
-            }
-        },
-        "authentication.LoginSuccessResponse": {
-            "type": "object",
-            "properties": {
-                "jwt": {
-                    "type": "string"
-                },
-                "user": {
-                    "$ref": "#/definitions/authentication.UserDetail"
                 }
             }
         },
@@ -1201,6 +1889,7 @@ const docTemplate = `{
                 "email",
                 "firstName",
                 "lastName",
+                "location",
                 "password",
                 "phone",
                 "role",
@@ -1215,6 +1904,9 @@ const docTemplate = `{
                 },
                 "lastName": {
                     "type": "string"
+                },
+                "location": {
+                    "$ref": "#/definitions/authentication.Location"
                 },
                 "password": {
                     "type": "string"
@@ -1237,6 +1929,7 @@ const docTemplate = `{
         "authentication.UserDetail": {
             "type": "object",
             "required": [
+                "email",
                 "firstName",
                 "isVerified",
                 "lastName",
@@ -1244,6 +1937,12 @@ const docTemplate = `{
                 "username"
             ],
             "properties": {
+                "displayPic": {
+                    "type": "string"
+                },
+                "email": {
+                    "type": "string"
+                },
                 "firstName": {
                     "type": "string"
                 },
@@ -1252,6 +1951,9 @@ const docTemplate = `{
                 },
                 "lastName": {
                     "type": "string"
+                },
+                "location": {
+                    "$ref": "#/definitions/authentication.Location"
                 },
                 "phone": {
                     "type": "string"
@@ -1293,6 +1995,7 @@ const docTemplate = `{
             "required": [
                 "developer",
                 "genres",
+                "image",
                 "publisher",
                 "releaseDate",
                 "summary",
@@ -1307,6 +2010,9 @@ const docTemplate = `{
                     "items": {
                         "$ref": "#/definitions/games.EmbeddedGameGenre"
                     }
+                },
+                "image": {
+                    "type": "string"
                 },
                 "publisher": {
                     "type": "string"
@@ -1389,6 +2095,9 @@ const docTemplate = `{
                     }
                 },
                 "id": {
+                    "type": "string"
+                },
+                "image": {
                     "type": "string"
                 },
                 "isDeleted": {
@@ -1494,16 +2203,19 @@ const docTemplate = `{
         "games.RatingStats": {
             "type": "object",
             "properties": {
-                "average": {
-                    "type": "number"
+                "count": {
+                    "type": "integer"
                 },
-                "totalRatings": {
+                "sum": {
                     "type": "integer"
                 }
             }
         },
         "games.UpdateGameRequest": {
             "type": "object",
+            "required": [
+                "image"
+            ],
             "properties": {
                 "developer": {
                     "type": "string"
@@ -1513,6 +2225,9 @@ const docTemplate = `{
                     "items": {
                         "$ref": "#/definitions/games.EmbeddedGameGenre"
                     }
+                },
+                "image": {
+                    "type": "string"
                 },
                 "publisher": {
                     "type": "string"
@@ -1542,6 +2257,246 @@ const docTemplate = `{
             "properties": {
                 "data": {},
                 "message": {
+                    "type": "string"
+                }
+            }
+        },
+        "reviews.AddReviewRequest": {
+            "type": "object",
+            "required": [
+                "comment",
+                "gameId",
+                "rating"
+            ],
+            "properties": {
+                "comment": {
+                    "type": "string",
+                    "maxLength": 2000,
+                    "minLength": 5
+                },
+                "gameId": {
+                    "type": "string"
+                },
+                "rating": {
+                    "type": "integer",
+                    "minimum": 0
+                }
+            }
+        },
+        "reviews.AddReviewRes": {
+            "type": "object",
+            "properties": {
+                "reviewId": {
+                    "type": "string"
+                }
+            }
+        },
+        "reviews.GetFlaggedReviewsRequest": {
+            "type": "object",
+            "properties": {
+                "gameId": {
+                    "type": "string"
+                },
+                "limit": {
+                    "type": "integer"
+                },
+                "offset": {
+                    "type": "integer"
+                }
+            }
+        },
+        "reviews.GetReviewsForGame": {
+            "type": "object",
+            "required": [
+                "limit",
+                "offset"
+            ],
+            "properties": {
+                "gameId": {
+                    "type": "string"
+                },
+                "limit": {
+                    "type": "integer",
+                    "maximum": 100,
+                    "minimum": 0
+                },
+                "offset": {
+                    "type": "integer",
+                    "minimum": 0
+                },
+                "sortBy": {
+                    "$ref": "#/definitions/reviews.Sort"
+                },
+                "userId": {
+                    "type": "string"
+                }
+            }
+        },
+        "reviews.Location": {
+            "type": "object",
+            "properties": {
+                "city": {
+                    "type": "string"
+                },
+                "country": {
+                    "type": "string"
+                },
+                "countryCode": {
+                    "type": "string"
+                },
+                "latitude": {
+                    "type": "number"
+                },
+                "longitude": {
+                    "type": "number"
+                }
+            }
+        },
+        "reviews.PaginatedResponse-reviews_Review": {
+            "type": "object",
+            "properties": {
+                "currentPage": {
+                    "type": "integer"
+                },
+                "data": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/reviews.Review"
+                    }
+                },
+                "hasMore": {
+                    "type": "boolean"
+                },
+                "itemsPerPage": {
+                    "type": "integer"
+                },
+                "totalItems": {
+                    "type": "integer"
+                },
+                "totalPages": {
+                    "type": "integer"
+                }
+            }
+        },
+        "reviews.PaginatedResponse-reviews_ReviewResponse": {
+            "type": "object",
+            "properties": {
+                "currentPage": {
+                    "type": "integer"
+                },
+                "data": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/reviews.ReviewResponse"
+                    }
+                },
+                "hasMore": {
+                    "type": "boolean"
+                },
+                "itemsPerPage": {
+                    "type": "integer"
+                },
+                "totalItems": {
+                    "type": "integer"
+                },
+                "totalPages": {
+                    "type": "integer"
+                }
+            }
+        },
+        "reviews.Review": {
+            "type": "object",
+            "properties": {
+                "comment": {
+                    "type": "string"
+                },
+                "createdAt": {
+                    "type": "string"
+                },
+                "gameId": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "isDeleted": {
+                    "type": "boolean"
+                },
+                "isFlagged": {
+                    "type": "boolean"
+                },
+                "lastUpdatedAt": {
+                    "type": "string"
+                },
+                "rating": {
+                    "type": "integer"
+                },
+                "userId": {
+                    "type": "string"
+                },
+                "votes": {
+                    "type": "integer"
+                }
+            }
+        },
+        "reviews.ReviewResponse": {
+            "type": "object",
+            "properties": {
+                "review": {
+                    "$ref": "#/definitions/reviews.Review"
+                },
+                "user": {
+                    "$ref": "#/definitions/reviews.User"
+                },
+                "vote": {
+                    "$ref": "#/definitions/reviews.Vote"
+                }
+            }
+        },
+        "reviews.Sort": {
+            "type": "object",
+            "properties": {
+                "asc": {
+                    "type": "boolean"
+                },
+                "sortKey": {
+                    "type": "string"
+                }
+            }
+        },
+        "reviews.User": {
+            "type": "object",
+            "properties": {
+                "avatar": {
+                    "type": "string"
+                },
+                "fullName": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "location": {
+                    "$ref": "#/definitions/reviews.Location"
+                },
+                "username": {
+                    "type": "string"
+                }
+            }
+        },
+        "reviews.Vote": {
+            "type": "object",
+            "properties": {
+                "isDownVote": {
+                    "type": "boolean"
+                },
+                "isUpVote": {
+                    "type": "boolean"
+                },
+                "reviewId": {
+                    "type": "string"
+                },
+                "userId": {
                     "type": "string"
                 }
             }

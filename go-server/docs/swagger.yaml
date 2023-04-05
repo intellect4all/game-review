@@ -12,14 +12,36 @@ definitions:
       password:
         minLength: 8
         type: string
-      tokenID:
+      tokenId:
         type: string
     required:
     - confirmPassword
     - email
     - otpCode
     - password
-    - tokenID
+    - tokenId
+    type: object
+  authentication.Location:
+    properties:
+      city:
+        type: string
+      country:
+        type: string
+      countryCode:
+        type: string
+      latitude:
+        type: number
+      longitude:
+        type: number
+    type: object
+  authentication.LoginDTO:
+    properties:
+      jwt:
+        type: string
+      userDetails:
+        $ref: '#/definitions/authentication.UserDetail'
+      userId:
+        type: string
     type: object
   authentication.LoginRequest:
     properties:
@@ -30,13 +52,6 @@ definitions:
     required:
     - email
     - password
-    type: object
-  authentication.LoginSuccessResponse:
-    properties:
-      jwt:
-        type: string
-      user:
-        $ref: '#/definitions/authentication.UserDetail'
     type: object
   authentication.OTPCreationSuccessResponse:
     properties:
@@ -53,6 +68,8 @@ definitions:
         type: string
       lastName:
         type: string
+      location:
+        $ref: '#/definitions/authentication.Location'
       password:
         type: string
       phone:
@@ -68,6 +85,7 @@ definitions:
     - email
     - firstName
     - lastName
+    - location
     - password
     - phone
     - role
@@ -75,12 +93,18 @@ definitions:
     type: object
   authentication.UserDetail:
     properties:
+      displayPic:
+        type: string
+      email:
+        type: string
       firstName:
         type: string
       isVerified:
         type: boolean
       lastName:
         type: string
+      location:
+        $ref: '#/definitions/authentication.Location'
       phone:
         type: string
       role:
@@ -92,6 +116,7 @@ definitions:
       username:
         type: string
     required:
+    - email
     - firstName
     - isVerified
     - lastName
@@ -119,6 +144,8 @@ definitions:
         items:
           $ref: '#/definitions/games.EmbeddedGameGenre'
         type: array
+      image:
+        type: string
       publisher:
         type: string
       releaseDate:
@@ -130,6 +157,7 @@ definitions:
     required:
     - developer
     - genres
+    - image
     - publisher
     - releaseDate
     - summary
@@ -179,6 +207,8 @@ definitions:
           $ref: '#/definitions/games.EmbeddedGameGenre'
         type: array
       id:
+        type: string
+      image:
         type: string
       isDeleted:
         type: boolean
@@ -248,9 +278,9 @@ definitions:
     type: object
   games.RatingStats:
     properties:
-      average:
-        type: number
-      totalRatings:
+      count:
+        type: integer
+      sum:
         type: integer
     type: object
   games.UpdateGameRequest:
@@ -261,6 +291,8 @@ definitions:
         items:
           $ref: '#/definitions/games.EmbeddedGameGenre'
         type: array
+      image:
+        type: string
       publisher:
         type: string
       releaseDate:
@@ -269,6 +301,8 @@ definitions:
         type: string
       title:
         type: string
+    required:
+    - image
     type: object
   main.JSONErrorRes:
     properties:
@@ -280,6 +314,165 @@ definitions:
     properties:
       data: {}
       message:
+        type: string
+    type: object
+  reviews.AddReviewRequest:
+    properties:
+      comment:
+        maxLength: 2000
+        minLength: 5
+        type: string
+      gameId:
+        type: string
+      rating:
+        minimum: 0
+        type: integer
+    required:
+    - comment
+    - gameId
+    - rating
+    type: object
+  reviews.AddReviewRes:
+    properties:
+      reviewId:
+        type: string
+    type: object
+  reviews.GetFlaggedReviewsRequest:
+    properties:
+      gameId:
+        type: string
+      limit:
+        type: integer
+      offset:
+        type: integer
+    type: object
+  reviews.GetReviewsForGame:
+    properties:
+      gameId:
+        type: string
+      limit:
+        maximum: 100
+        minimum: 0
+        type: integer
+      offset:
+        minimum: 0
+        type: integer
+      sortBy:
+        $ref: '#/definitions/reviews.Sort'
+      userId:
+        type: string
+    required:
+    - limit
+    - offset
+    type: object
+  reviews.Location:
+    properties:
+      city:
+        type: string
+      country:
+        type: string
+      countryCode:
+        type: string
+      latitude:
+        type: number
+      longitude:
+        type: number
+    type: object
+  reviews.PaginatedResponse-reviews_Review:
+    properties:
+      currentPage:
+        type: integer
+      data:
+        items:
+          $ref: '#/definitions/reviews.Review'
+        type: array
+      hasMore:
+        type: boolean
+      itemsPerPage:
+        type: integer
+      totalItems:
+        type: integer
+      totalPages:
+        type: integer
+    type: object
+  reviews.PaginatedResponse-reviews_ReviewResponse:
+    properties:
+      currentPage:
+        type: integer
+      data:
+        items:
+          $ref: '#/definitions/reviews.ReviewResponse'
+        type: array
+      hasMore:
+        type: boolean
+      itemsPerPage:
+        type: integer
+      totalItems:
+        type: integer
+      totalPages:
+        type: integer
+    type: object
+  reviews.Review:
+    properties:
+      comment:
+        type: string
+      createdAt:
+        type: string
+      gameId:
+        type: string
+      id:
+        type: string
+      isDeleted:
+        type: boolean
+      isFlagged:
+        type: boolean
+      lastUpdatedAt:
+        type: string
+      rating:
+        type: integer
+      userId:
+        type: string
+      votes:
+        type: integer
+    type: object
+  reviews.ReviewResponse:
+    properties:
+      review:
+        $ref: '#/definitions/reviews.Review'
+      user:
+        $ref: '#/definitions/reviews.User'
+      vote:
+        $ref: '#/definitions/reviews.Vote'
+    type: object
+  reviews.Sort:
+    properties:
+      asc:
+        type: boolean
+      sortKey:
+        type: string
+    type: object
+  reviews.User:
+    properties:
+      avatar:
+        type: string
+      fullName:
+        type: string
+      id:
+        type: string
+      location:
+        $ref: '#/definitions/reviews.Location'
+      username:
+        type: string
+    type: object
+  reviews.Vote:
+    properties:
+      isDownVote:
+        type: boolean
+      isUpVote:
+        type: boolean
+      reviewId:
+        type: string
+      userId:
         type: string
     type: object
 info:
@@ -295,7 +488,7 @@ info:
   title: Game Review API
   version: "1.0"
 paths:
-  /api/v1/forgot-password/init/{email}:
+  /api/v1/account/forgot-password/init/{email}:
     post:
       consumes:
       - application/json
@@ -331,8 +524,8 @@ paths:
             $ref: '#/definitions/main.JSONErrorRes'
       summary: Forget password endpoint
       tags:
-      - Authentication
-  /api/v1/forgot-password/resend/{email}:
+      - Account
+  /api/v1/account/forgot-password/resend/{email}:
     post:
       consumes:
       - application/json
@@ -368,8 +561,8 @@ paths:
             $ref: '#/definitions/main.JSONErrorRes'
       summary: Resend OTP code for Forget password
       tags:
-      - Authentication
-  /api/v1/forgot-password/reset:
+      - Account
+  /api/v1/account/forgot-password/reset:
     post:
       consumes:
       - application/json
@@ -413,7 +606,229 @@ paths:
             $ref: '#/definitions/main.JSONErrorRes'
       summary: Complete Forget password reset
       tags:
-      - Authentication
+      - Account
+  /api/v1/account/init-verification/{email}:
+    post:
+      consumes:
+      - application/json
+      description: |-
+        An otp code is sent to the email if the user account existed.
+        An otp ID is returned, which must submitted alongside the otpCode sent to the mail to the VerifyAccount endpoint.
+      operationId: initVerifyAccount
+      parameters:
+      - description: Email address
+        in: path
+        name: email
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Success
+          schema:
+            allOf:
+            - $ref: '#/definitions/main.JSONResult'
+            - properties:
+                data:
+                  $ref: '#/definitions/authentication.OTPCreationSuccessResponse'
+              type: object
+        "404":
+          description: No Account Found
+          schema:
+            $ref: '#/definitions/main.JSONErrorRes'
+        "409":
+          description: User already verified
+          schema:
+            $ref: '#/definitions/main.JSONErrorRes'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/main.JSONErrorRes'
+      summary: Initiate user email verification
+      tags:
+      - Account
+  /api/v1/account/login:
+    post:
+      consumes:
+      - application/json
+      description: Returns a signed JSON Web Token that can be used to talk to secured
+        endpoints
+      operationId: login
+      parameters:
+      - description: login request
+        in: body
+        name: loginRequest
+        required: true
+        schema:
+          $ref: '#/definitions/authentication.LoginRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: success
+          schema:
+            allOf:
+            - $ref: '#/definitions/main.JSONResult'
+            - properties:
+                data:
+                  $ref: '#/definitions/authentication.LoginDTO'
+              type: object
+        "400":
+          description: Bad request
+          schema:
+            $ref: '#/definitions/main.JSONErrorRes'
+        "404":
+          description: User not found
+          schema:
+            $ref: '#/definitions/main.JSONErrorRes'
+        "426":
+          description: Account is inactive
+          schema:
+            $ref: '#/definitions/main.JSONErrorRes'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/main.JSONErrorRes'
+      summary: Login endpoint for all users
+      tags:
+      - Account
+  /api/v1/account/signup:
+    post:
+      consumes:
+      - application/json
+      description: Creates a new User/Moderator on the system. The Moderator will
+        need to be manually activated by an existing admin
+      operationId: signup
+      parameters:
+      - description: signup request
+        in: body
+        name: signUpRequest
+        required: true
+        schema:
+          $ref: '#/definitions/authentication.SignUpRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Success
+          schema:
+            allOf:
+            - $ref: '#/definitions/main.JSONResult'
+            - properties:
+                data:
+                  type: string
+              type: object
+        "207":
+          description: Success
+          schema:
+            allOf:
+            - $ref: '#/definitions/main.JSONResult'
+            - properties:
+                data:
+                  type: string
+              type: object
+        "400":
+          description: Bad request
+          schema:
+            $ref: '#/definitions/main.JSONErrorRes'
+        "409":
+          description: User already exists
+          schema:
+            $ref: '#/definitions/main.JSONErrorRes'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/main.JSONErrorRes'
+      summary: Signup endpoint for all users and moderators
+      tags:
+      - Account
+  /api/v1/account/verify-email:
+    post:
+      consumes:
+      - application/json
+      description: The Endpoint verifies the user account using the otp code sent
+        to the user's email
+      operationId: VerifyAccount
+      parameters:
+      - description: OtpID data
+        in: body
+        name: verifyAccountRequest
+        required: true
+        schema:
+          $ref: '#/definitions/authentication.VerifyAccountRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Success
+          schema:
+            allOf:
+            - $ref: '#/definitions/main.JSONResult'
+            - properties:
+                data:
+                  type: string
+              type: object
+        "400":
+          description: Bad request
+          schema:
+            $ref: '#/definitions/main.JSONErrorRes'
+        "404":
+          description: No Account Found
+          schema:
+            $ref: '#/definitions/main.JSONErrorRes'
+        "409":
+          description: User already verified
+          schema:
+            $ref: '#/definitions/main.JSONErrorRes'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/main.JSONErrorRes'
+      summary: Complete account verification
+      tags:
+      - Account
+  /api/v1/account/verify-email/resend/{email}:
+    post:
+      consumes:
+      - application/json
+      description: |-
+        An otp code is sent to the email if the user account existed.
+        An otp ID is returned, which must submitted alongside the otpCode sent to the mail to the VerifyAccount endpoint.
+      operationId: ResendVerificationCode
+      parameters:
+      - description: Email address
+        in: path
+        name: email
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Success
+          schema:
+            allOf:
+            - $ref: '#/definitions/main.JSONResult'
+            - properties:
+                data:
+                  $ref: '#/definitions/authentication.OTPCreationSuccessResponse'
+              type: object
+        "404":
+          description: No Account Found
+          schema:
+            $ref: '#/definitions/main.JSONErrorRes'
+        "409":
+          description: User already verified
+          schema:
+            $ref: '#/definitions/main.JSONErrorRes'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/main.JSONErrorRes'
+      summary: Resend OTP code for account verification
+      tags:
+      - Account
   /api/v1/games:
     get:
       consumes:
@@ -742,51 +1157,6 @@ paths:
       summary: Updates a game genre
       tags:
       - games
-  /api/v1/login:
-    post:
-      consumes:
-      - application/json
-      description: Returns a signed JSON Web Token that can be used to talk to secured
-        endpoints
-      operationId: login
-      parameters:
-      - description: login request
-        in: body
-        name: loginRequest
-        required: true
-        schema:
-          $ref: '#/definitions/authentication.LoginRequest'
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: success
-          schema:
-            allOf:
-            - $ref: '#/definitions/main.JSONResult'
-            - properties:
-                data:
-                  $ref: '#/definitions/authentication.LoginSuccessResponse'
-              type: object
-        "400":
-          description: Bad request
-          schema:
-            $ref: '#/definitions/main.JSONErrorRes'
-        "404":
-          description: User not found
-          schema:
-            $ref: '#/definitions/main.JSONErrorRes'
-        "426":
-          description: Account is inactive
-          schema:
-            $ref: '#/definitions/main.JSONErrorRes'
-        "500":
-          description: Internal Server Error
-          schema:
-            $ref: '#/definitions/main.JSONErrorRes'
-      summary: Login endpoint for all users
-      tags:
-      - Authentication
   /api/v1/ping:
     get:
       consumes:
@@ -804,20 +1174,18 @@ paths:
       summary: Show the status of server.
       tags:
       - ping
-  /api/v1/signup:
-    post:
+  /api/v1/reviews/{reviewId}:
+    delete:
       consumes:
       - application/json
-      description: Creates a new User/Moderator on the system. The Moderator will
-        need to be manually activated by an existing admin
-      operationId: signup
+      description: Delete a review
+      operationId: deleteReview
       parameters:
-      - description: signup request
-        in: body
-        name: signUpRequest
+      - description: review id
+        in: path
+        name: reviewId
         required: true
-        schema:
-          $ref: '#/definitions/authentication.SignUpRequest'
+        type: string
       produces:
       - application/json
       responses:
@@ -828,35 +1196,30 @@ paths:
             - $ref: '#/definitions/main.JSONResult'
             - properties:
                 data:
-                  type: string
+                  $ref: '#/definitions/reviews.AddReviewRes'
               type: object
         "400":
           description: Bad request
           schema:
             $ref: '#/definitions/main.JSONErrorRes'
-        "409":
-          description: User already exists
+        "404":
+          description: Review not found
           schema:
             $ref: '#/definitions/main.JSONErrorRes'
-        "500":
-          description: Internal Server Error
-          schema:
-            $ref: '#/definitions/main.JSONErrorRes'
-      summary: Signup endpoint for all users and moderators
+      security:
+      - BearerAuth: []
+      summary: Delete a review
       tags:
-      - Onboarding
-  /api/v1/verify-account/init/{email}:
-    post:
+      - Reviews
+    get:
       consumes:
       - application/json
-      description: |-
-        An otp code is sent to the email if the user account existed.
-        An otp ID is returned, which must submitted alongside the otpCode sent to the mail to the VerifyAccount endpoint.
-      operationId: initVerifyAccount
+      description: Get a review
+      operationId: getReview
       parameters:
-      - description: Email address
+      - description: review id
         in: path
-        name: email
+        name: reviewId
         required: true
         type: string
       produces:
@@ -869,78 +1232,75 @@ paths:
             - $ref: '#/definitions/main.JSONResult'
             - properties:
                 data:
-                  $ref: '#/definitions/authentication.OTPCreationSuccessResponse'
+                  $ref: '#/definitions/reviews.ReviewResponse'
               type: object
+        "400":
+          description: Bad request
+          schema:
+            $ref: '#/definitions/main.JSONErrorRes'
         "404":
-          description: No Account Found
+          description: Review not found
           schema:
             $ref: '#/definitions/main.JSONErrorRes'
-        "409":
-          description: User already verified
-          schema:
-            $ref: '#/definitions/main.JSONErrorRes'
-        "500":
-          description: Internal Server Error
-          schema:
-            $ref: '#/definitions/main.JSONErrorRes'
-      summary: Initiate user email verification
+      security:
+      - BearerAuth: []
+      summary: Get a review
       tags:
-      - Onboarding
-  /api/v1/verify-account/resend/{email}:
-    post:
+      - Reviews
+    put:
       consumes:
       - application/json
-      description: |-
-        An otp code is sent to the email if the user account existed.
-        An otp ID is returned, which must submitted alongside the otpCode sent to the mail to the VerifyAccount endpoint.
-      operationId: ResendVerificationCode
+      description: Update a review
+      operationId: updateReview
       parameters:
-      - description: Email address
-        in: path
-        name: email
-        required: true
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: Success
-          schema:
-            allOf:
-            - $ref: '#/definitions/main.JSONResult'
-            - properties:
-                data:
-                  $ref: '#/definitions/authentication.OTPCreationSuccessResponse'
-              type: object
-        "404":
-          description: No Account Found
-          schema:
-            $ref: '#/definitions/main.JSONErrorRes'
-        "409":
-          description: User already verified
-          schema:
-            $ref: '#/definitions/main.JSONErrorRes'
-        "500":
-          description: Internal Server Error
-          schema:
-            $ref: '#/definitions/main.JSONErrorRes'
-      summary: Resend OTP code for account verification
-      tags:
-      - Onboarding
-  /api/v1/verify-account/verify:
-    post:
-      consumes:
-      - application/json
-      description: The Endpoint verifies the user account using the otp code sent
-        to the user's email
-      operationId: VerifyAccount
-      parameters:
-      - description: OtpID data
+      - description: update review request
         in: body
-        name: verifyAccountRequest
+        name: addReview
         required: true
         schema:
-          $ref: '#/definitions/authentication.VerifyAccountRequest'
+          $ref: '#/definitions/reviews.AddReviewRequest'
+      - description: review id
+        in: path
+        name: reviewId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Success
+          schema:
+            allOf:
+            - $ref: '#/definitions/main.JSONResult'
+            - properties:
+                data:
+                  $ref: '#/definitions/reviews.AddReviewRes'
+              type: object
+        "400":
+          description: Bad request
+          schema:
+            $ref: '#/definitions/main.JSONErrorRes'
+        "404":
+          description: Review not found
+          schema:
+            $ref: '#/definitions/main.JSONErrorRes'
+      security:
+      - BearerAuth: []
+      summary: Update a review
+      tags:
+      - Reviews
+  /api/v1/reviews/{reviewId}/downvote:
+    post:
+      consumes:
+      - application/json
+      description: Upvote a review
+      operationId: downvoteReview
+      parameters:
+      - description: review id
+        in: path
+        name: reviewId
+        required: true
+        type: string
       produces:
       - application/json
       responses:
@@ -958,20 +1318,250 @@ paths:
           schema:
             $ref: '#/definitions/main.JSONErrorRes'
         "404":
-          description: No Account Found
+          description: Review not found
+          schema:
+            $ref: '#/definitions/main.JSONErrorRes'
+      security:
+      - BearerAuth: []
+      summary: Upvote a review
+      tags:
+      - Reviews
+  /api/v1/reviews/{reviewId}/flag:
+    post:
+      consumes:
+      - application/json
+      description: Flag a review
+      operationId: flagReview
+      parameters:
+      - description: review id
+        in: path
+        name: reviewId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Success
+          schema:
+            allOf:
+            - $ref: '#/definitions/main.JSONResult'
+            - properties:
+                data:
+                  type: string
+              type: object
+        "400":
+          description: Bad request
+          schema:
+            $ref: '#/definitions/main.JSONErrorRes'
+        "404":
+          description: Review not found
+          schema:
+            $ref: '#/definitions/main.JSONErrorRes'
+      security:
+      - BearerAuth: []
+      summary: Flag a review
+      tags:
+      - Reviews
+  /api/v1/reviews/{reviewId}/upvote:
+    post:
+      consumes:
+      - application/json
+      description: Upvote a review
+      operationId: upvoteReview
+      parameters:
+      - description: review id
+        in: path
+        name: reviewId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Success
+          schema:
+            allOf:
+            - $ref: '#/definitions/main.JSONResult'
+            - properties:
+                data:
+                  type: string
+              type: object
+        "400":
+          description: Bad request
+          schema:
+            $ref: '#/definitions/main.JSONErrorRes'
+        "404":
+          description: Review not found
+          schema:
+            $ref: '#/definitions/main.JSONErrorRes'
+      security:
+      - BearerAuth: []
+      summary: Upvote a review
+      tags:
+      - Reviews
+  /api/v1/reviews/add:
+    post:
+      consumes:
+      - application/json
+      description: Add a review
+      operationId: addReview
+      parameters:
+      - description: addReview request
+        in: body
+        name: addReview
+        required: true
+        schema:
+          $ref: '#/definitions/reviews.AddReviewRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Success
+          schema:
+            allOf:
+            - $ref: '#/definitions/main.JSONResult'
+            - properties:
+                data:
+                  $ref: '#/definitions/reviews.AddReviewRes'
+              type: object
+        "400":
+          description: Bad request
+          schema:
+            $ref: '#/definitions/main.JSONErrorRes'
+        "404":
+          description: Game not found
           schema:
             $ref: '#/definitions/main.JSONErrorRes'
         "409":
-          description: User already verified
+          description: Review already exists
           schema:
             $ref: '#/definitions/main.JSONErrorRes'
-        "500":
-          description: Internal Server Error
-          schema:
-            $ref: '#/definitions/main.JSONErrorRes'
-      summary: Complete account verification
+      security:
+      - BearerAuth: []
+      summary: Add a review
       tags:
-      - Onboarding
+      - Reviews
+  /api/v1/reviews/flagged:
+    get:
+      consumes:
+      - application/json
+      description: Get flagged reviews
+      operationId: getFlaggedReviews
+      parameters:
+      - description: getFlaggedRequest request
+        in: body
+        name: getGameReviews
+        required: true
+        schema:
+          $ref: '#/definitions/reviews.GetFlaggedReviewsRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Success
+          schema:
+            allOf:
+            - $ref: '#/definitions/main.JSONResult'
+            - properties:
+                data:
+                  $ref: '#/definitions/reviews.PaginatedResponse-reviews_Review'
+              type: object
+        "400":
+          description: Bad request
+          schema:
+            $ref: '#/definitions/main.JSONErrorRes'
+      security:
+      - BearerAuth: []
+      summary: Get flagged reviews
+      tags:
+      - Reviews
+  /api/v1/reviews/game/{gameId}:
+    get:
+      consumes:
+      - application/json
+      description: Get reviews for a game
+      operationId: getReviewsForGame
+      parameters:
+      - description: getGameReviews request
+        in: body
+        name: getGameReviews
+        required: true
+        schema:
+          $ref: '#/definitions/reviews.GetReviewsForGame'
+      - description: game id
+        in: path
+        name: gameId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Success
+          schema:
+            allOf:
+            - $ref: '#/definitions/main.JSONResult'
+            - properties:
+                data:
+                  $ref: '#/definitions/reviews.PaginatedResponse-reviews_ReviewResponse'
+              type: object
+        "400":
+          description: Bad request
+          schema:
+            $ref: '#/definitions/main.JSONErrorRes'
+        "404":
+          description: Game not found
+          schema:
+            $ref: '#/definitions/main.JSONErrorRes'
+      security:
+      - BearerAuth: []
+      summary: Get reviews for a game
+      tags:
+      - Reviews
+  /api/v1/reviews/user/{userId}:
+    get:
+      consumes:
+      - application/json
+      description: Get all reviews for a user
+      operationId: getReviewsForUser
+      parameters:
+      - description: getGameReviews request
+        in: body
+        name: getGameReviews
+        required: true
+        schema:
+          $ref: '#/definitions/reviews.GetReviewsForGame'
+      - description: user id
+        in: path
+        name: userId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Success
+          schema:
+            allOf:
+            - $ref: '#/definitions/main.JSONResult'
+            - properties:
+                data:
+                  $ref: '#/definitions/reviews.PaginatedResponse-reviews_ReviewResponse'
+              type: object
+        "400":
+          description: Bad request
+          schema:
+            $ref: '#/definitions/main.JSONErrorRes'
+        "404":
+          description: User not found
+          schema:
+            $ref: '#/definitions/main.JSONErrorRes'
+      security:
+      - BearerAuth: []
+      summary: Get all reviews for a user
+      tags:
+      - Reviews
 schemes:
 - http
 - https

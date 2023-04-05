@@ -3,6 +3,7 @@ package authentication
 import (
 	"github.com/golang-jwt/jwt"
 	"go-server/pkg/security"
+	"log"
 )
 
 type JWTHelperImpl struct{}
@@ -80,6 +81,8 @@ func (j *JWTHelperImpl) ValidateJWT(jwtToken AuthenticatedUserJWT) (*JwtClaims, 
 	if !token.Valid {
 		return &JwtClaims{}, err
 	}
+
+	log.Println("JWt validated")
 
 	return jwtClaims, nil
 }

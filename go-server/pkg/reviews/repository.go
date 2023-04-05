@@ -60,6 +60,7 @@ type UserRw struct {
 	Username  string             `bson:"username"`
 	firstName string             `bson:"firstName"`
 	lastName  string             `bson:"lastName"`
+	Location  Location           `bson:"location"`
 }
 
 func (r *RepositoryImpl) GetReview(ctx context.Context, id string) (*Review, *User, error) {
@@ -254,25 +255,76 @@ func (r *RepositoryImpl) GetReviewsForGame(ctx context.Context, req *GetReviewsF
 		return nil, UnknownError
 	}
 
+	if len(reviews) == 0 {
+		return &PaginatedResponse[ReviewResponse]{
+			Data:         []ReviewResponse{},
+			TotalPages:   0,
+			CurrentPage:  0,
+			TotalItems:   0,
+			HasMore:      false,
+			ItemsPerPage: 0,
+		}, nil
+	}
+
 	var userIds []string
 
 	for _, review := range reviews {
+		// check for duplicate user ids
+		var found bool
+		for _, userId := range userIds {
+			if userId == review.UserId {
+				found = true
+				break
+			}
+		}
+
+		if found {
+			continue
+		}
 		userIds = append(userIds, review.UserId)
 	}
 
-	userIdFilter := bson.D{{"_id", bson.D{{"$in", req.UserId}}}}
+	log.Println(userIds)
 
-	returnedFields := bson.D{{"_id", 1}, {"displayPic", 1}, {"username", 1}, {"firstName", 1}, {"lastName", 1}}
-	opts = options.Find().SetProjection(returnedFields)
+	// get each user
 
-	cursor, err = r.mongoDbClient.Database("test").Collection("users").Find(ctx, userIdFilter, opts)
+	userChan := make(chan UserRw, len(userIds))
 
-	if err != nil {
-		log.Println(err)
-		return nil, UnknownError
+	for _, userId := range userIds {
+
+		go func(userId string) {
+			log.Println("go routine started", userId)
+			var user UserRw
+
+			id, _ := primitive.ObjectIDFromHex(userId)
+
+			filter := bson.D{{"_id", id}}
+			err := r.mongoDbClient.Database("test").Collection("users").FindOne(ctx, filter).Decode(&user)
+			if err != nil {
+				userChan <- UserRw{}
+				return
+			}
+			userChan <- user
+		}(userId)
 	}
 
-	err = cursor.All(ctx, &userRws)
+	goRoutineCount := 0
+
+	// get channel values
+	for user := range userChan {
+		goRoutineCount++
+
+		if user.Username != "" {
+			userRws = append(userRws, user)
+		}
+
+		if goRoutineCount == len(userIds) {
+			close(userChan)
+		}
+	}
+
+	log.Println(userRws)
+
 	if err != nil {
 		log.Println(err)
 		return nil, UnknownError
@@ -282,19 +334,38 @@ func (r *RepositoryImpl) GetReviewsForGame(ctx context.Context, req *GetReviewsF
 
 	for _, review := range reviews {
 		var user User
+
 		for _, userRw := range userRws {
 			if userRw.Id.Hex() == review.UserId {
 				user.UserId = userRw.Id.Hex()
 				user.Avatar = userRw.Avatar
 				user.Username = userRw.Username
 				user.FullName = userRw.firstName + " " + userRw.lastName
+				user.Location = userRw.Location
+
+				break
 			}
+		}
+
+		if user.UserId == "" {
+			continue
 		}
 
 		reviewResponses = append(reviewResponses, ReviewResponse{
 			Review: review,
 			User:   user,
 		})
+	}
+
+	if len(reviewResponses) == 0 {
+		return &PaginatedResponse[ReviewResponse]{
+			Data:         []ReviewResponse{},
+			TotalPages:   0,
+			CurrentPage:  0,
+			TotalItems:   0,
+			HasMore:      false,
+			ItemsPerPage: 0,
+		}, nil
 	}
 
 	// get votes for each reviews with go routines
@@ -488,4 +559,22 @@ func (r *RepositoryImpl) GetFlaggedReviews(ctx context.Context, gameId string, l
 	}
 
 	return response, nil
+}
+
+func (r *RepositoryImpl) UpdateReviewStats(ctx context.Context, gameId string, rating int) error {
+	//find game
+	log.Println("increment rating for game: ", gameId, " with rating: ", rating)
+
+	id := primitive.ObjectID{}
+	id, _ = primitive.ObjectIDFromHex(gameId)
+
+	filter := bson.D{{"_id", id}}
+
+	err := r.mongoDbClient.Database("test").Collection("games").FindOneAndUpdate(ctx, filter, bson.D{{"$inc", bson.D{{"rating.count", 1}, {"rating.sum", rating}}}})
+	if err != nil {
+		log.Println(err)
+		return UnknownError
+	}
+
+	return nil
 }
