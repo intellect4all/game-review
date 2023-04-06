@@ -48,6 +48,7 @@ func (a *AuthMiddlewareImpl) AuthMiddleware(authCheck func(claims *JwtClaims) (s
 		}
 
 		if message, ok := authCheck(claims); !ok {
+			log.Println("user not validated")
 			return c.Status(fiber.StatusForbidden).JSON(fiber.Map{
 				"message": message,
 				"error":   "Unauthorized",
@@ -57,9 +58,15 @@ func (a *AuthMiddlewareImpl) AuthMiddleware(authCheck func(claims *JwtClaims) (s
 		c.Locals("userId", claims.Id)
 		c.Locals("role", claims.Role)
 
-		log.Println("user validated")
+		res := c.Next()
 
-		return c.Next()
+		if res != nil {
+			log.Println("error: ", res.Error())
+		}
+
+		log.Println("user validated  ddd")
+
+		return res
 	}
 }
 

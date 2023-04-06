@@ -41,10 +41,9 @@ func (r *RepositoryImpl) AddReview(ctx context.Context, review *Review) error {
 func (r *RepositoryImpl) UpdateReview(ctx context.Context, review *Review) error {
 
 	filter := bson.D{{"_id", review.Id}}
-	opts := options.Update().SetUpsert(true)
 	update := bson.D{{"$set", review}}
 
-	_, err := r.mongoDbClient.Database("test").Collection(reviewsCollection).UpdateOne(ctx, filter, update, opts)
+	_, err := r.mongoDbClient.Database("test").Collection(reviewsCollection).UpdateOne(ctx, filter, update)
 
 	if err != nil {
 		log.Println(err)
@@ -68,16 +67,20 @@ func (r *RepositoryImpl) GetReview(ctx context.Context, id string) (*Review, *Us
 	var review Review
 	var userRw UserRw
 
-	filter := bson.D{{"_id", id}, {"isDeleted", false}}
+	rawId, _ := primitive.ObjectIDFromHex(id)
+
+	filter := bson.D{{"_id", rawId}, {"isDeleted", false}}
 
 	err := r.mongoDbClient.Database("test").Collection(reviewsCollection).FindOne(ctx, filter).Decode(&review)
 
 	if err != nil {
-		log.Println(err)
+		log.Println(err.Error() + " adf " + id)
 		return nil, nil, ErrNotFound
 	}
 
-	filter = bson.D{{"_id", review.UserId}, {"isDeleted", false}}
+	rawUserId, _ := primitive.ObjectIDFromHex(review.UserId)
+
+	filter = bson.D{{"_id", rawUserId}, {"isActive", true}}
 	returnedFields := bson.D{{"_id", 1}, {"displayPic", 1}, {"username", 1}, {"firstName", 1}, {"lastName", 1}}
 	opts := options.FindOne().SetProjection(returnedFields)
 
@@ -517,25 +520,42 @@ func (r *RepositoryImpl) GetReviewsForUser(ctx context.Context, req *GetReviewsF
 func (r *RepositoryImpl) GetFlaggedReviews(ctx context.Context, gameId string, limit int, offset int) (*PaginatedResponse[Review], error) {
 	var reviews []Review
 
+	log.Println("gameId: " + gameId)
+
 	gameRevFilter := bson.D{{"isDeleted", false}, {"isFlagged", true}}
 
 	if gameId != "" {
 		gameRevFilter = append(gameRevFilter, bson.E{Key: "gameId", Value: gameId})
 	}
 
+	log.Println("here 1")
+
 	opts := options.Find().SetLimit(int64(limit)).SetSkip(int64(offset)).SetSort(bson.D{{"createdAt", -1}})
 
 	cursor, err := r.mongoDbClient.Database("test").Collection(reviewsCollection).Find(ctx, gameRevFilter, opts)
 
 	if err != nil {
-		log.Println(err)
+		log.Println(err.Error() + " 1")
 		return nil, UnknownError
 	}
 
+	log.Println("here 2")
+
 	err = cursor.All(ctx, &reviews)
 	if err != nil {
-		log.Println(err)
+		log.Println(err.Error() + " 2")
+
+		if err == mongo.ErrNoDocuments {
+			return &PaginatedResponse[Review]{}, nil
+		}
+
 		return nil, UnknownError
+	}
+
+	log.Println("here 3")
+
+	if len(reviews) == 0 {
+		return &PaginatedResponse[Review]{}, nil
 	}
 
 	var count int64
@@ -543,9 +563,11 @@ func (r *RepositoryImpl) GetFlaggedReviews(ctx context.Context, gameId string, l
 	count, err = r.mongoDbClient.Database("test").Collection(reviewsCollection).CountDocuments(ctx, gameRevFilter)
 
 	if err != nil {
-		log.Println(err)
+		log.Println(err.Error() + " 3")
 		return nil, UnknownError
 	}
+
+	log.Println("here 4")
 
 	var response *PaginatedResponse[Review]
 
@@ -561,7 +583,7 @@ func (r *RepositoryImpl) GetFlaggedReviews(ctx context.Context, gameId string, l
 	return response, nil
 }
 
-func (r *RepositoryImpl) UpdateReviewStats(ctx context.Context, gameId string, rating int) error {
+func (r *RepositoryImpl) UpdateReviewStats(ctx context.Context, gameId string, rating int, ratingCount int) error {
 	//find game
 	log.Println("increment rating for game: ", gameId, " with rating: ", rating)
 
@@ -570,7 +592,7 @@ func (r *RepositoryImpl) UpdateReviewStats(ctx context.Context, gameId string, r
 
 	filter := bson.D{{"_id", id}}
 
-	err := r.mongoDbClient.Database("test").Collection("games").FindOneAndUpdate(ctx, filter, bson.D{{"$inc", bson.D{{"rating.count", 1}, {"rating.sum", rating}}}})
+	err := r.mongoDbClient.Database("test").Collection("games").FindOneAndUpdate(ctx, filter, bson.D{{"$inc", bson.D{{"rating.count", ratingCount}, {"rating.sum", rating}}}})
 	if err != nil {
 		log.Println(err)
 		return UnknownError

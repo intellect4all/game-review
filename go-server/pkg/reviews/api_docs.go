@@ -26,6 +26,7 @@ import (
 // @Router /api/v1/reviews/add [post]
 func HandleAddReview(handler *Handler, ctx context.Context) fiber.Handler {
 	return func(c *fiber.Ctx) error {
+		log.Println("add review")
 		ctx = GetNewContext(ctx, c)
 		return handler.AddReview(ctx, c)
 	}
@@ -51,6 +52,7 @@ func HandleAddReview(handler *Handler, ctx context.Context) fiber.Handler {
 // @Router /api/v1/reviews/{reviewId} [put]
 func HandleUpdateReview(handler *Handler, ctx context.Context) fiber.Handler {
 	return func(c *fiber.Ctx) error {
+		log.Println("update review")
 		ctx = GetNewContext(ctx, c)
 		return handler.UpdateReview(ctx, c)
 	}
@@ -75,6 +77,7 @@ func HandleUpdateReview(handler *Handler, ctx context.Context) fiber.Handler {
 // @Router /api/v1/reviews/{reviewId} [get]
 func HandleGetReview(handler *Handler, ctx context.Context) fiber.Handler {
 	return func(c *fiber.Ctx) error {
+		log.Println("get review")
 		ctx = GetNewContext(ctx, c)
 		return handler.GetReview(ctx, c)
 	}
@@ -91,7 +94,7 @@ func HandleGetReview(handler *Handler, ctx context.Context) fiber.Handler {
 // @Accept json
 // @Produce json
 //
-// @Param getGameReviews body reviews.GetReviewsForGame	 true "getGameReviews request"
+// @Param getGameReviews query reviews.GetReviewsForGame	 true "getGameReviews request"
 // @Param gameId path string true "game id"
 //
 // @Success 200 {object} main.JSONResult{data=reviews.PaginatedResponse[ReviewResponse]} "Success"
@@ -100,6 +103,7 @@ func HandleGetReview(handler *Handler, ctx context.Context) fiber.Handler {
 // @Router /api/v1/reviews/game/{gameId} [get]
 func HandleGetReviewsForGame(handler *Handler, ctx context.Context) fiber.Handler {
 	return func(c *fiber.Ctx) error {
+		log.Println("HandleGetReviewsForGame")
 		ctx = GetNewContext(ctx, c)
 		return handler.GetReviewsForGame(ctx, c)
 	}
@@ -125,6 +129,7 @@ func HandleGetReviewsForGame(handler *Handler, ctx context.Context) fiber.Handle
 // @Router /api/v1/reviews/user/{userId} [get]
 func HandleGetReviewsForUser(handler *Handler, ctx context.Context) fiber.Handler {
 	return func(c *fiber.Ctx) error {
+		log.Println("HandleGetReviewsForUser")
 		ctx = GetNewContext(ctx, c)
 		return handler.GetReviewsForUser(ctx, c)
 	}
@@ -149,6 +154,7 @@ func HandleGetReviewsForUser(handler *Handler, ctx context.Context) fiber.Handle
 // @Router /api/v1/reviews/{reviewId} [delete]
 func HandleDeleteReview(handler *Handler, ctx context.Context) fiber.Handler {
 	return func(c *fiber.Ctx) error {
+		log.Println("delete review")
 		ctx = GetNewContext(ctx, c)
 		return handler.DeleteReview(ctx, c)
 	}
@@ -156,6 +162,7 @@ func HandleDeleteReview(handler *Handler, ctx context.Context) fiber.Handler {
 
 func HandleVoteReview(handler *Handler, ctx context.Context, shouldUpvote bool) fiber.Handler {
 	return func(c *fiber.Ctx) error {
+		log.Println("vote review")
 		ctx = GetNewContext(ctx, c)
 		if shouldUpvote {
 			return upvote(ctx, c, handler)
@@ -217,13 +224,15 @@ func downVote(ctx context.Context, c *fiber.Ctx, handler *Handler) error {
 // @Accept json
 // @Produce json
 //
-// @Param getGameReviews body reviews.GetFlaggedReviewsRequest	 true "getFlaggedRequest request"
+// @Param getGameReviews query reviews.GetFlaggedReviewsRequest	 true "getFlaggedRequest request"
 //
 // @Success 200 {object} main.JSONResult{data=reviews.PaginatedResponse[Review]} "Success"
 // @Failure 400 {object} main.JSONErrorRes "Bad request"
 // @Router /api/v1/reviews/flagged [get]
 func HandleGetFlaggedReviews(handler *Handler, ctx context.Context) fiber.Handler {
+
 	return func(c *fiber.Ctx) error {
+		log.Println("HandleGetFlaggedReviews")
 		ctx = GetNewContext(ctx, c)
 		return handler.GetFlaggedReviews(ctx, c)
 	}
@@ -248,8 +257,34 @@ func HandleGetFlaggedReviews(handler *Handler, ctx context.Context) fiber.Handle
 // @Router /api/v1/reviews/{reviewId}/flag [post]
 func HandleFlagReview(handler *Handler, ctx context.Context) fiber.Handler {
 	return func(c *fiber.Ctx) error {
+		log.Println("flag review")
 		ctx = GetNewContext(ctx, c)
-		return handler.FlagReview(ctx, c)
+		return handler.FlagReview(ctx, c, true)
+	}
+}
+
+// HandleUnflagReview godoc
+//
+// @Security BearerAuth
+//
+// @Summary unflag a review
+// @Description unflag a review
+// @Tags Reviews
+// @ID unflagReview
+// @Accept json
+// @Produce json
+//
+// @Param reviewId path string true "review id"
+//
+// @Success 200 {object} main.JSONResult{data=string} "Success"
+// @Failure 400 {object} main.JSONErrorRes "Bad request"
+// @Failure 404 {object} main.JSONErrorRes "Review not found"
+// @Router /api/v1/reviews/{reviewId}/unflag [post]
+func HandleUnflagReview(handler *Handler, ctx context.Context) fiber.Handler {
+	return func(c *fiber.Ctx) error {
+		log.Println("unflag review")
+		ctx = GetNewContext(ctx, c)
+		return handler.FlagReview(ctx, c, false)
 	}
 }
 
@@ -257,10 +292,6 @@ func GetNewContext(ctx context.Context, c *fiber.Ctx) context.Context {
 	userId := c.Locals("userId").(string)
 	role := c.Locals("role").(string)
 
-	log.Println("userId", userId)
-	log.Println("role", role)
-	log.Println("userId", userId)
-	log.Println("role", role)
 	ctx = context.WithValue(ctx, "userId", userId)
 	ctx = context.WithValue(ctx, "role", role)
 	return ctx

@@ -1236,13 +1236,19 @@ const docTemplate = `{
                 "operationId": "getFlaggedReviews",
                 "parameters": [
                     {
-                        "description": "getFlaggedRequest request",
-                        "name": "getGameReviews",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/reviews.GetFlaggedReviewsRequest"
-                        }
+                        "type": "string",
+                        "name": "gameId",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "name": "limit",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "name": "offset",
+                        "in": "query"
                     }
                 ],
                 "responses": {
@@ -1294,13 +1300,29 @@ const docTemplate = `{
                 "operationId": "getReviewsForGame",
                 "parameters": [
                     {
-                        "description": "getGameReviews request",
-                        "name": "getGameReviews",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/reviews.GetReviewsForGame"
-                        }
+                        "type": "string",
+                        "name": "gameId",
+                        "in": "query"
+                    },
+                    {
+                        "maximum": 100,
+                        "minimum": 0,
+                        "type": "integer",
+                        "name": "limit",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "minimum": 0,
+                        "type": "integer",
+                        "name": "offset",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "name": "userId",
+                        "in": "query"
                     },
                     {
                         "type": "string",
@@ -2018,7 +2040,7 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "releaseDate": {
-                    "type": "string"
+                    "type": "integer"
                 },
                 "summary": {
                     "type": "string"
@@ -2110,7 +2132,7 @@ const docTemplate = `{
                     "$ref": "#/definitions/games.RatingStats"
                 },
                 "releaseDate": {
-                    "type": "string"
+                    "type": "integer"
                 },
                 "summary": {
                     "type": "string"
@@ -2233,7 +2255,7 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "releaseDate": {
-                    "type": "string"
+                    "type": "integer"
                 },
                 "summary": {
                     "type": "string"
@@ -2288,20 +2310,6 @@ const docTemplate = `{
             "properties": {
                 "reviewId": {
                     "type": "string"
-                }
-            }
-        },
-        "reviews.GetFlaggedReviewsRequest": {
-            "type": "object",
-            "properties": {
-                "gameId": {
-                    "type": "string"
-                },
-                "limit": {
-                    "type": "integer"
-                },
-                "offset": {
-                    "type": "integer"
                 }
             }
         },

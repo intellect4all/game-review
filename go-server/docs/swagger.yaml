@@ -149,7 +149,7 @@ definitions:
       publisher:
         type: string
       releaseDate:
-        type: string
+        type: integer
       summary:
         type: string
       title:
@@ -217,7 +217,7 @@ definitions:
       rating:
         $ref: '#/definitions/games.RatingStats'
       releaseDate:
-        type: string
+        type: integer
       summary:
         type: string
       title:
@@ -296,7 +296,7 @@ definitions:
       publisher:
         type: string
       releaseDate:
-        type: string
+        type: integer
       summary:
         type: string
       title:
@@ -336,15 +336,6 @@ definitions:
     properties:
       reviewId:
         type: string
-    type: object
-  reviews.GetFlaggedReviewsRequest:
-    properties:
-      gameId:
-        type: string
-      limit:
-        type: integer
-      offset:
-        type: integer
     type: object
   reviews.GetReviewsForGame:
     properties:
@@ -1449,12 +1440,15 @@ paths:
       description: Get flagged reviews
       operationId: getFlaggedReviews
       parameters:
-      - description: getFlaggedRequest request
-        in: body
-        name: getGameReviews
-        required: true
-        schema:
-          $ref: '#/definitions/reviews.GetFlaggedReviewsRequest'
+      - in: query
+        name: gameId
+        type: string
+      - in: query
+        name: limit
+        type: integer
+      - in: query
+        name: offset
+        type: integer
       produces:
       - application/json
       responses:
@@ -1483,12 +1477,23 @@ paths:
       description: Get reviews for a game
       operationId: getReviewsForGame
       parameters:
-      - description: getGameReviews request
-        in: body
-        name: getGameReviews
+      - in: query
+        name: gameId
+        type: string
+      - in: query
+        maximum: 100
+        minimum: 0
+        name: limit
         required: true
-        schema:
-          $ref: '#/definitions/reviews.GetReviewsForGame'
+        type: integer
+      - in: query
+        minimum: 0
+        name: offset
+        required: true
+        type: integer
+      - in: query
+        name: userId
+        type: string
       - description: game id
         in: path
         name: gameId

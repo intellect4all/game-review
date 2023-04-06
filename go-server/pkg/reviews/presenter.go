@@ -1,6 +1,9 @@
 package reviews
 
-import "github.com/gofiber/fiber/v2"
+import (
+	"github.com/gofiber/fiber/v2"
+	"log"
+)
 
 func AddReviewErrorResponse(c *fiber.Ctx, err error) error {
 	status := 0
@@ -144,6 +147,9 @@ func GetFlaggedReviewsErrorResponse(c *fiber.Ctx, err error) error {
 		message = "Something went wrong"
 	}
 
+	log.Println("GetFlaggedReviewsErrorResponse")
+	log.Println(err)
+
 	return c.Status(status).JSON(fiber.Map{
 		"message": message,
 		"error":   err.Error(),
@@ -178,9 +184,13 @@ func FlagReviewErrorResponse(c *fiber.Ctx, err error) error {
 	})
 }
 
-func FlagReviewSuccessResp(c *fiber.Ctx) error {
+func FlagReviewSuccessResp(c *fiber.Ctx, shouldFlag bool) error {
+	message := "Review unflagged"
+	if shouldFlag {
+		message = "Review flagged"
+	}
 	return c.Status(fiber.StatusAccepted).JSON(&fiber.Map{
-		"message": "Review flagged",
+		"message": message,
 		"data":    "",
 	})
 }

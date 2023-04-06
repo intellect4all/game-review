@@ -80,7 +80,7 @@ func main() {
 	//_generateGames(initResponse.MongoDbClient)
 
 	if err != nil {
-		log.Fatal(err)
+		log.Fatal(err, "Error while registering routes")
 		return
 	}
 
@@ -635,7 +635,7 @@ func _generateGames(mongo *mongo.Client) {
 				Title:       game.Title,
 				Summary:     game.Sum,
 				Id:          primitive.NewObjectID(),
-				ReleaseDate: date,
+				ReleaseDate: date.Year(),
 				Developer:   game.Dev,
 				Publisher:   game.Pub,
 				Rating: games.RatingStats{

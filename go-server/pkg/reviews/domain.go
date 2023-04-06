@@ -72,7 +72,7 @@ type Review struct {
 	CreatedAt     time.Time          `json:"createdAt" bson:"createdAt"`
 	LastUpdatedAt time.Time          `json:"lastUpdatedAt" bson:"lastUpdatedAt"`
 	GameId        string             `json:"gameId" bson:"gameId"`
-	Id            primitive.ObjectID `json:"id" bson:"id"`
+	Id            primitive.ObjectID `json:"id" bson:"_id"`
 	IsDeleted     bool               `json:"isDeleted" bson:"isDeleted"`
 	IsFlagged     bool               `json:"isFlagged" bson:"isFlagged"`
 	Votes         int                `json:"votes"`
@@ -107,7 +107,7 @@ type Repository interface {
 	Vote(ctx context.Context, req VoteRequest, shouldUpvote bool) error
 	GetVote(ctx context.Context, userId string, gameId string) (*Vote, error)
 	GetFlaggedReviews(ctx context.Context, gameId string, limit int, offset int) (*PaginatedResponse[Review], error)
-	UpdateReviewStats(ctx context.Context, id string, rating int) error
+	UpdateReviewStats(ctx context.Context, id string, rating int, ratingCount int) error
 }
 
 func NewService(r Repository) *Service {
@@ -149,7 +149,7 @@ func (s *Service) addReview(ctx context.Context, r *AddReview) (string, error) {
 
 	go func() {
 		defer waitGroup.Done()
-		err := s.updateReviewStats(ctx, r)
+		err := s.updateReviewStats(ctx, review.GameId, review.Rating, 1)
 		if err != nil {
 			return
 		}
@@ -267,7 +267,7 @@ func (s *Service) updateReview(ctx context.Context, id string, r *AddReview) err
 	if r.Rating > 0 {
 		go func() {
 			defer waitGroup.Done()
-			s.updateReviewStats(ctx, r)
+			s.updateReviewStats(ctx, r.GameId, r.Rating-oldReview.Rating, 0)
 		}()
 	}
 
@@ -281,11 +281,14 @@ func (s *Service) deleteReview(ctx context.Context, id string) error {
 	role := ctx.Value("role").(string)
 	review, u, err := s.repository.GetReview(ctx, id)
 
+	log.Println("Deleting review: " + id)
+
 	if err != nil {
 		return err
 	}
 
-	if u == nil || u.UserId != userId || (role != "admin" && role != "moderator") {
+	if (u == nil || u.UserId != userId) && (role != "admin" && role != "moderator") {
+
 		return ErrReviewNotFound
 	}
 
@@ -301,8 +304,12 @@ func (s *Service) deleteReview(ctx context.Context, id string) error {
 	}
 
 	go func() {
-		//TODO: notify user that their review was deleted
-		log.Println("Notifying user that their review was deleted: " + review.String())
+		// update review stats
+		err := s.updateReviewStats(ctx, review.GameId, -review.Rating, -1)
+		if err != nil {
+			log.Println(err)
+		}
+
 	}()
 
 	return nil
@@ -403,14 +410,28 @@ func mergeReviews(review *Review, r *AddReview) {
 }
 
 func (s *Service) checkForPossibleOffensiveContent(ctx context.Context, review Review) {
-	// check for offensive content
+	// check for offensive words
+	log.Println("Checking for offensive words in review: " + review.String())
+	for _, word := range offensiveWords {
+		if strings.Contains(strings.ToLower(review.Comment), word) {
+			log.Println("Found offensive word: " + word)
+			go func(reviewId string) {
+				err := s.flagReview(ctx, reviewId, true)
+				if err != nil {
+					log.Println("Error flagging review: " + err.Error())
+					return
+				}
+			}(review.Id.Hex())
+			return
+		}
+	}
 
 }
 
-func (s *Service) updateReviewStats(ctx context.Context, r *AddReview) error {
+func (s *Service) updateReviewStats(ctx context.Context, gameId string, rating int, ratingCount int) error {
 	// update game stats
-	log.Println("Updating review stats for game: " + r.GameId)
-	return s.repository.UpdateReviewStats(ctx, r.GameId, r.Rating)
+	log.Println("Updating review stats for game: " + gameId)
+	return s.repository.UpdateReviewStats(ctx, gameId, rating, ratingCount)
 
 }
 
@@ -428,4 +449,21 @@ func getReviewFromAddReview(r *AddReview) Review {
 		UserId:        r.UserId,
 	}
 
+}
+
+var offensiveWords []string
+
+func init() {
+	offensiveWords = []string{
+		"fuck",
+		"shit",
+		"fuck off",
+		"cunt",
+		"motherfucker",
+		"fucker",
+		"wanker",
+		"dumbass",
+		"nigga",
+		"nigger",
+	}
 }

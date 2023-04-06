@@ -2,6 +2,7 @@ package reviews
 
 import (
 	"context"
+	"fmt"
 	"github.com/gofiber/fiber/v2"
 	"log"
 )
@@ -127,35 +128,44 @@ func (h *Handler) VoteReview(ctx context.Context, c *fiber.Ctx, upvote bool) err
 }
 
 type GetFlaggedReviewsRequest struct {
-	GameId string `query:"gameId"`
-	Limit  int    `query:"limit"`
-	Offset int    `query:"offset"`
+	GameId string `json:"gameId"`
+	Limit  int    `json:"limit"`
+	Offset int    `json:"offset"`
 }
 
 func (h *Handler) GetFlaggedReviews(ctx context.Context, c *fiber.Ctx) error {
 	var req GetFlaggedReviewsRequest
 
+	log.Println("here domain 0")
+
+	fmt.Println("here domain 0")
+
 	err := c.QueryParser(&req)
+
+	log.Println("here domain 1")
 
 	reviews, err := h.Service.getFlaggedReviews(ctx, req.GameId, req.Limit, req.Offset)
 
+	log.Println("here domain 2")
+
 	if err != nil {
+		log.Println(err)
 		return GetFlaggedReviewsErrorResponse(c, err)
 	}
 
 	return GetFlaggedReviewsSuccessResp(c, reviews)
 }
 
-func (h *Handler) FlagReview(ctx context.Context, c *fiber.Ctx) error {
+func (h *Handler) FlagReview(ctx context.Context, c *fiber.Ctx, shouldFlag bool) error {
 	id := c.Params("id")
 
-	err := h.Service.flagReview(ctx, id, true)
+	err := h.Service.flagReview(ctx, id, shouldFlag)
 
 	if err != nil {
 		return FlagReviewErrorResponse(c, err)
 	}
 
-	return FlagReviewSuccessResp(c)
+	return FlagReviewSuccessResp(c, shouldFlag)
 
 }
 

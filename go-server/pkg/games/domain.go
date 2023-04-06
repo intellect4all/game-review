@@ -47,7 +47,7 @@ type Game struct {
 	Title       string               `json:"title" bson:"title"`
 	Summary     string               `json:"summary" bson:"summary"`
 	Id          primitive.ObjectID   `json:"id" bson:"_id,omitempty"`
-	ReleaseDate time.Time            `json:"releaseDate" bson:"releaseDate"`
+	ReleaseDate int                  `json:"releaseDate" bson:"releaseDate"`
 	Developer   string               `json:"developer" bson:"developer"`
 	Publisher   string               `json:"publisher" bson:"publisher"`
 	Genres      []*EmbeddedGameGenre `json:"genres" bson:"genres"`
