@@ -1366,6 +1366,75 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/v1/reviews/locations": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Get reviews locations",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Reviews"
+                ],
+                "summary": "Get reviews locations",
+                "operationId": "getReviewsLocations",
+                "parameters": [
+                    {
+                        "enum": [
+                            "day",
+                            "week",
+                            "month"
+                        ],
+                        "type": "string",
+                        "name": "type",
+                        "in": "query"
+                    },
+                    {
+                        "minimum": 1,
+                        "type": "integer",
+                        "name": "value",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Success",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/main.JSONResult"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/reviews.LocationWithCount"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad request",
+                        "schema": {
+                            "$ref": "#/definitions/main.JSONErrorRes"
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/reviews/user/{userId}": {
             "get": {
                 "security": [
@@ -1709,6 +1778,68 @@ const docTemplate = `{
                 ],
                 "summary": "Flag a review",
                 "operationId": "flagReview",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "review id",
+                        "name": "reviewId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Success",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/main.JSONResult"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "string"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad request",
+                        "schema": {
+                            "$ref": "#/definitions/main.JSONErrorRes"
+                        }
+                    },
+                    "404": {
+                        "description": "Review not found",
+                        "schema": {
+                            "$ref": "#/definitions/main.JSONErrorRes"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/reviews/{reviewId}/unflag": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "unflag a review",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Reviews"
+                ],
+                "summary": "unflag a review",
+                "operationId": "unflagReview",
                 "parameters": [
                     {
                         "type": "string",
@@ -2288,6 +2419,7 @@ const docTemplate = `{
             "required": [
                 "comment",
                 "gameId",
+                "location",
                 "rating"
             ],
             "properties": {
@@ -2298,6 +2430,9 @@ const docTemplate = `{
                 },
                 "gameId": {
                     "type": "string"
+                },
+                "location": {
+                    "$ref": "#/definitions/reviews.Location"
                 },
                 "rating": {
                     "type": "integer",
@@ -2340,6 +2475,17 @@ const docTemplate = `{
                 }
             }
         },
+        "reviews.LatLng": {
+            "type": "object",
+            "properties": {
+                "lat": {
+                    "type": "number"
+                },
+                "lng": {
+                    "type": "number"
+                }
+            }
+        },
         "reviews.Location": {
             "type": "object",
             "properties": {
@@ -2357,6 +2503,17 @@ const docTemplate = `{
                 },
                 "longitude": {
                     "type": "number"
+                }
+            }
+        },
+        "reviews.LocationWithCount": {
+            "type": "object",
+            "properties": {
+                "count": {
+                    "type": "integer"
+                },
+                "location": {
+                    "$ref": "#/definitions/reviews.LatLng"
                 }
             }
         },
@@ -2435,6 +2592,9 @@ const docTemplate = `{
                 },
                 "lastUpdatedAt": {
                     "type": "string"
+                },
+                "location": {
+                    "$ref": "#/definitions/reviews.Location"
                 },
                 "rating": {
                     "type": "integer"

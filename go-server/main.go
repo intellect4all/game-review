@@ -1,7 +1,9 @@
 package main
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/cors"
@@ -15,9 +17,14 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
+	"io"
 	"log"
+	"math"
 	"math/rand"
+	"net/http"
 	"os"
+	"reflect"
+	"strconv"
 	"sync"
 	"time"
 )
@@ -79,6 +86,8 @@ func main() {
 
 	//_generateGames(initResponse.MongoDbClient)
 
+	//_generateRandomReviews(initResponse.MongoDbClient)
+
 	if err != nil {
 		log.Fatal(err, "Error while registering routes")
 		return
@@ -88,11 +97,354 @@ func main() {
 
 	fmt.Println("Server is running on port: " + port)
 
+	go func() {
+		// sleep for 5 seconds
+		time.Sleep(5 * time.Second)
+		// call the api
+		//_callApi(initResponse.MongoDbClient)
+		//_getReviewLocations()
+	}()
+
 	err = app.Listen(":" + port)
 	if err != nil {
 		log.Println(err)
 		os.Exit(1)
 	}
+
+}
+
+func _getReviewLocations() {
+
+	email := "test" + strconv.Itoa(2) + "@gmail.com"
+
+	log.Println("Email: ", email)
+	//signUpReq := &authentication.SignUpRequest{
+	//	Email:     email,
+	//	Username:  "test" + strconv.Itoa(i),
+	//	Password:  "@Test234349ma",
+	//	Role:      "user",
+	//	FirstName: "test",
+	//	LastName:  "test",
+	//	Phone:     "+2348123456789",
+	//	Location: authentication.Location{
+	//		Country:     "Nigeria",
+	//		City:        "Lagos",
+	//		CountryCode: "NG",
+	//		Latitude:    lat,
+	//		Longitude:   long,
+	//	},
+	//}
+
+	loginReq := authentication.LoginRequest{
+		Email:    email,
+		Password: "@Test234349ma",
+	}
+
+	// convert signUpReq to a json
+	jsonValue, err := json.Marshal(loginReq)
+
+	if err != nil {
+		log.Println(err)
+		return
+	}
+
+	// send the request
+	res, err := http.Post("https://5gf7g7rqo8.execute-api.us-east-1.amazonaws.com/api/v1/account/login", "application/json", bytes.NewBuffer(jsonValue))
+	//res, err := http.Post("https://5gf7g7rqo8.execute-api.us-east-1.amazonaws.com/api/v1/account/signup", "application/json", bytes.NewBuffer(jsonValue))
+	if err != nil {
+		log.Println(err)
+		return
+	}
+
+	log.Println("http Response: ", res)
+	//log.Println("res body: ", res.Body)
+	log.Println("res status: ", res.Status)
+
+	var jsonResp JSONResult
+
+	// get the response
+	var resp authentication.LoginDTO
+	err = json.NewDecoder(res.Body).Decode(&jsonResp)
+
+	if err != nil {
+		log.Println(err)
+		return
+	}
+
+	log.Println("Json Response: ", jsonResp)
+
+	jByte := jsonResp.Data
+
+	log.Println("jbyte ")
+
+	/// log the type of jByte
+	log.Println("jbyte type: ", reflect.TypeOf(jByte))
+
+	// Convert the map to JSON
+	jsonData, _ := json.Marshal(jByte)
+
+	// Convert the JSON to a struct
+
+	err = json.Unmarshal(jsonData, &resp)
+	if err != nil {
+		return
+	}
+
+	log.Println("Response: ", resp)
+
+	httpClient := &http.Client{}
+
+	reqMap := make(map[string]interface{})
+	reqMap["type"] = "day"
+	reqMap["value"] = 1
+
+	reqBody, err := json.Marshal(reqMap)
+
+	//req, err := http.NewRequest("GET", "https://5gf7g7rqo8.execute-api.us-east-1.amazonaws.com/api/v1/reviews/locations", reqBody)
+	req, err := http.NewRequest("GET", "http://localhost:3000/api/v1/reviews/locations", bytes.NewBuffer(reqBody))
+
+	if err != nil {
+		return
+	}
+
+	/// add a bearer token
+	req.Header.Set("Authorization", string(*resp.JWT))
+
+	log.Println("Header set")
+
+	get, err := httpClient.Do(req)
+
+	if err != nil {
+		log.Println(err)
+		return
+	}
+
+	log.Println("Get: ", get)
+
+	defer func(Body io.ReadCloser) {
+		err := Body.Close()
+		if err != nil {
+
+		}
+	}(get.Body)
+
+	var body []byte
+	_, err = get.Body.Read(body)
+	if err != nil {
+		return
+
+	}
+
+	var locations []reviews.Location
+	err = json.Unmarshal(body, &locations)
+	if err != nil {
+		return
+
+	}
+
+	log.Println(locations)
+
+}
+
+type Dd struct {
+	jwt    string
+	userId string
+}
+
+func _callApi(mgClient *mongo.Client) {
+
+	jwtListChan := make(chan Dd, 20)
+
+	go func() {
+		for i := 0; i < 20; i++ {
+			go func(i int) {
+				// get random lat and long
+
+				email := "test" + strconv.Itoa(i) + "@gmail.com"
+
+				log.Println("Email: ", email)
+				//signUpReq := &authentication.SignUpRequest{
+				//	Email:     email,
+				//	Username:  "test" + strconv.Itoa(i),
+				//	Password:  "@Test234349ma",
+				//	Role:      "user",
+				//	FirstName: "test",
+				//	LastName:  "test",
+				//	Phone:     "+2348123456789",
+				//	Location: authentication.Location{
+				//		Country:     "Nigeria",
+				//		City:        "Lagos",
+				//		CountryCode: "NG",
+				//		Latitude:    lat,
+				//		Longitude:   long,
+				//	},
+				//}
+
+				loginReq := authentication.LoginRequest{
+					Email:    email,
+					Password: "@Test234349ma",
+				}
+
+				// convert signUpReq to a json
+				jsonValue, err := json.Marshal(loginReq)
+
+				if err != nil {
+					log.Println(err)
+					// send empty string to jwtListChan
+					jwtListChan <- Dd{}
+					return
+				}
+
+				// send the request
+				res, err := http.Post("https://5gf7g7rqo8.execute-api.us-east-1.amazonaws.com/api/v1/account/login", "application/json", bytes.NewBuffer(jsonValue))
+				//res, err := http.Post("https://5gf7g7rqo8.execute-api.us-east-1.amazonaws.com/api/v1/account/signup", "application/json", bytes.NewBuffer(jsonValue))
+				if err != nil {
+					log.Println(err)
+					jwtListChan <- Dd{}
+					return
+				}
+
+				log.Println("http Response: ", res)
+				//log.Println("res body: ", res.Body)
+				log.Println("res status: ", res.Status)
+
+				var jsonResp JSONResult
+
+				// get the response
+				var resp authentication.LoginDTO
+				err = json.NewDecoder(res.Body).Decode(&jsonResp)
+
+				if err != nil {
+					log.Println(err)
+					jwtListChan <- Dd{}
+					return
+				}
+
+				log.Println("Json Response: ", jsonResp)
+
+				jByte := jsonResp.Data
+
+				log.Println("jbyte ")
+
+				/// log the type of jByte
+				log.Println("jbyte type: ", reflect.TypeOf(jByte))
+
+				// Convert the map to JSON
+				jsonData, _ := json.Marshal(jByte)
+
+				// Convert the JSON to a struct
+
+				err = json.Unmarshal(jsonData, &resp)
+				if err != nil {
+					return
+				}
+
+				log.Println("Response: ", resp)
+
+				if resp.JWT == nil {
+					log.Println("JWT is nil")
+					jwtListChan <- Dd{}
+					return
+				}
+
+				// get the token
+				token := *resp.JWT
+
+				// send the token to the jwtListChan
+				jwtListChan <- Dd{jwt: string(token), userId: resp.Id}
+			}(i)
+		}
+
+	}()
+
+	// get the tokens from the jwtListChan
+
+	gameIds := []string{
+		"642f072ec614b80572d5c356",
+		"642f072ec614b80572d5c353",
+		"642f072ec614b80572d5c352",
+		"642f072ec614b80572d5c354",
+		"642f072ec614b80572d5c35a",
+	}
+
+	wg := sync.WaitGroup{}
+
+	for jwt := range jwtListChan {
+
+		wg.Add(1)
+
+		go func(jwt Dd) {
+
+			defer wg.Done()
+			// loop 10 times
+			for i := 0; i < 20; i++ {
+				if jwt.jwt == "" || jwt.userId == "" {
+					log.Println("jwt is empty")
+					return
+				}
+
+				// get a random time within the last 90 days
+				createdAt := time.Now().AddDate(0, 0, -rand.Intn(90))
+
+				// get random locations in the world
+				lat, long := _generateRandomLocation()
+
+				// generate a random review
+				rev := &reviews.Review{
+					Rating:        rand.Intn(5),
+					Comment:       "This is a random comment",
+					GameId:        gameIds[rand.Intn(5)],
+					CreatedAt:     createdAt,
+					LastUpdatedAt: createdAt,
+					Id:            primitive.NewObjectID(),
+					IsDeleted:     false,
+					IsFlagged:     false,
+					Votes:         rand.Intn(100),
+					UserId:        jwt.userId,
+					Location: reviews.Location{
+						Country:     "Nigeria",
+						City:        "Lagos",
+						CountryCode: "NG",
+						Latitude:    lat,
+						Longitude:   long,
+					},
+				}
+
+				// send the request with Authorization header
+				_, err := mgClient.Database("test").Collection("reviews").InsertOne(context.TODO(), rev)
+
+				if err != nil {
+					log.Println(err)
+					return
+				}
+
+				log.Println("Review created")
+			}
+
+		}(jwt)
+
+	}
+
+	wg.Wait()
+
+}
+
+// generate a random location within a radius of 1000 meters
+func _generateRandomLocation() (float64, float64) {
+	// location in Uk
+	centerLat, centerLong := 51.509865, -0.118092
+	radius := 1000000.0
+	rd := radius / 111300
+
+	u := rand.Float64()
+	v := rand.Float64()
+
+	w := rd * math.Sqrt(u)
+	t := 2 * math.Pi * v
+	x := w * math.Cos(t)
+	y := w * math.Sin(t)
+
+	return centerLat + y, centerLong + x
 }
 
 var d []games.Game

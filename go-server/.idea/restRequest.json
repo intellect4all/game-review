@@ -1,0 +1,6 @@
+{
+  "uri": "http://localhost/api/v1/reviews/locations?value\u003d1\u0026type\u003d%22day%22",
+  "method": "GET",
+  "body": "",
+  "headers": {}
+}

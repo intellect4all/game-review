@@ -282,16 +282,39 @@ func HandleFlagReview(handler *Handler, ctx context.Context) fiber.Handler {
 // @Router /api/v1/reviews/{reviewId}/unflag [post]
 func HandleUnflagReview(handler *Handler, ctx context.Context) fiber.Handler {
 	return func(c *fiber.Ctx) error {
-		log.Println("unflag review")
 		ctx = GetNewContext(ctx, c)
 		return handler.FlagReview(ctx, c, false)
 	}
 }
 
+// HandleGetReviewsLocations godoc
+//
+// @Security BearerAuth
+//
+// @Summary Get reviews locations
+// @Description Get reviews locations
+// @Tags Reviews
+// @ID getReviewsLocations
+// @Accept json
+// @Produce json
+//
+// @Param getGameReviews query reviews.GetReviewsLocationsRequest	 true "getReviewsLocationsRequest request"
+//
+// @Success 200 {object} main.JSONResult{data=[]reviews.LocationWithCount} "Success"
+// @Failure 400 {object} main.JSONErrorRes "Bad request"
+// @Router /api/v1/reviews/locations [get]
+func HandleGetReviewsLocations(handler *Handler, ctx context.Context) fiber.Handler {
+	return func(c *fiber.Ctx) error {
+		ctx = GetNewContext(ctx, c)
+
+		return handler.GetReviewsLocations(ctx, c)
+	}
+
+}
+
 func GetNewContext(ctx context.Context, c *fiber.Ctx) context.Context {
 	userId := c.Locals("userId").(string)
 	role := c.Locals("role").(string)
-
 	ctx = context.WithValue(ctx, "userId", userId)
 	ctx = context.WithValue(ctx, "role", role)
 	return ctx

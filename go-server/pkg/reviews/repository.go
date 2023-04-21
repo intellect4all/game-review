@@ -10,6 +10,7 @@ import (
 	"log"
 	"math"
 	"sync"
+	"time"
 )
 
 type RepositoryImpl struct {
@@ -520,15 +521,11 @@ func (r *RepositoryImpl) GetReviewsForUser(ctx context.Context, req *GetReviewsF
 func (r *RepositoryImpl) GetFlaggedReviews(ctx context.Context, gameId string, limit int, offset int) (*PaginatedResponse[Review], error) {
 	var reviews []Review
 
-	log.Println("gameId: " + gameId)
-
 	gameRevFilter := bson.D{{"isDeleted", false}, {"isFlagged", true}}
 
 	if gameId != "" {
 		gameRevFilter = append(gameRevFilter, bson.E{Key: "gameId", Value: gameId})
 	}
-
-	log.Println("here 1")
 
 	opts := options.Find().SetLimit(int64(limit)).SetSkip(int64(offset)).SetSort(bson.D{{"createdAt", -1}})
 
@@ -552,10 +549,12 @@ func (r *RepositoryImpl) GetFlaggedReviews(ctx context.Context, gameId string, l
 		return nil, UnknownError
 	}
 
-	log.Println("here 3")
-
 	if len(reviews) == 0 {
-		return &PaginatedResponse[Review]{}, nil
+		return &PaginatedResponse[Review]{
+			Data:        []Review{},
+			TotalPages:  0,
+			CurrentPage: 0,
+		}, nil
 	}
 
 	var count int64
@@ -566,8 +565,6 @@ func (r *RepositoryImpl) GetFlaggedReviews(ctx context.Context, gameId string, l
 		log.Println(err.Error() + " 3")
 		return nil, UnknownError
 	}
-
-	log.Println("here 4")
 
 	var response *PaginatedResponse[Review]
 
@@ -585,7 +582,6 @@ func (r *RepositoryImpl) GetFlaggedReviews(ctx context.Context, gameId string, l
 
 func (r *RepositoryImpl) UpdateReviewStats(ctx context.Context, gameId string, rating int, ratingCount int) error {
 	//find game
-	log.Println("increment rating for game: ", gameId, " with rating: ", rating)
 
 	id := primitive.ObjectID{}
 	id, _ = primitive.ObjectIDFromHex(gameId)
@@ -599,4 +595,27 @@ func (r *RepositoryImpl) UpdateReviewStats(ctx context.Context, gameId string, r
 	}
 
 	return nil
+}
+
+func (r *RepositoryImpl) getReviewersForTimeAgo(ctx context.Context, ago time.Time) (*[]Review, error) {
+
+	var reviews []Review
+
+	// get all reviews in the last 24 hours
+	filter := bson.D{{"createdAt", bson.D{{"$gte", ago}}}, {"isDeleted", false}}
+
+	cursor, err := r.mongoDbClient.Database("test").Collection(reviewsCollection).Find(ctx, filter)
+
+	if err != nil {
+		log.Println(err)
+		return nil, UnknownError
+	}
+
+	err = cursor.All(ctx, &reviews)
+	if err != nil {
+		log.Println(err)
+		return nil, UnknownError
+	}
+
+	return &reviews, nil
 }

@@ -324,12 +324,15 @@ definitions:
         type: string
       gameId:
         type: string
+      location:
+        $ref: '#/definitions/reviews.Location'
       rating:
         minimum: 0
         type: integer
     required:
     - comment
     - gameId
+    - location
     - rating
     type: object
   reviews.AddReviewRes:
@@ -356,6 +359,13 @@ definitions:
     - limit
     - offset
     type: object
+  reviews.LatLng:
+    properties:
+      lat:
+        type: number
+      lng:
+        type: number
+    type: object
   reviews.Location:
     properties:
       city:
@@ -368,6 +378,13 @@ definitions:
         type: number
       longitude:
         type: number
+    type: object
+  reviews.LocationWithCount:
+    properties:
+      count:
+        type: integer
+      location:
+        $ref: '#/definitions/reviews.LatLng'
     type: object
   reviews.PaginatedResponse-reviews_Review:
     properties:
@@ -419,6 +436,8 @@ definitions:
         type: boolean
       lastUpdatedAt:
         type: string
+      location:
+        $ref: '#/definitions/reviews.Location'
       rating:
         type: integer
       userId:
@@ -1354,6 +1373,43 @@ paths:
       summary: Flag a review
       tags:
       - Reviews
+  /api/v1/reviews/{reviewId}/unflag:
+    post:
+      consumes:
+      - application/json
+      description: unflag a review
+      operationId: unflagReview
+      parameters:
+      - description: review id
+        in: path
+        name: reviewId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Success
+          schema:
+            allOf:
+            - $ref: '#/definitions/main.JSONResult'
+            - properties:
+                data:
+                  type: string
+              type: object
+        "400":
+          description: Bad request
+          schema:
+            $ref: '#/definitions/main.JSONErrorRes'
+        "404":
+          description: Review not found
+          schema:
+            $ref: '#/definitions/main.JSONErrorRes'
+      security:
+      - BearerAuth: []
+      summary: unflag a review
+      tags:
+      - Reviews
   /api/v1/reviews/{reviewId}/upvote:
     post:
       consumes:
@@ -1522,6 +1578,48 @@ paths:
       security:
       - BearerAuth: []
       summary: Get reviews for a game
+      tags:
+      - Reviews
+  /api/v1/reviews/locations:
+    get:
+      consumes:
+      - application/json
+      description: Get reviews locations
+      operationId: getReviewsLocations
+      parameters:
+      - enum:
+        - day
+        - week
+        - month
+        in: query
+        name: type
+        type: string
+      - in: query
+        minimum: 1
+        name: value
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Success
+          schema:
+            allOf:
+            - $ref: '#/definitions/main.JSONResult'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/reviews.LocationWithCount'
+                  type: array
+              type: object
+        "400":
+          description: Bad request
+          schema:
+            $ref: '#/definitions/main.JSONErrorRes'
+      security:
+      - BearerAuth: []
+      summary: Get reviews locations
       tags:
       - Reviews
   /api/v1/reviews/user/{userId}:

@@ -194,3 +194,28 @@ func FlagReviewSuccessResp(c *fiber.Ctx, shouldFlag bool) error {
 		"data":    "",
 	})
 }
+
+func GetLocationErrorResponse(c *fiber.Ctx, err error) error {
+	status := 0
+	message := ""
+
+	if err == ErrBadRequest {
+		status = fiber.StatusBadRequest
+		message = "Invalid request body"
+	} else {
+		status = 500
+		message = "Something went wrong"
+	}
+
+	return c.Status(status).JSON(fiber.Map{
+		"message": message,
+		"error":   err.Error(),
+	})
+}
+
+func GetLocationSuccessResp(c *fiber.Ctx, locations []LocationWithCount) error {
+	return c.Status(fiber.StatusOK).JSON(&fiber.Map{
+		"message": "Reviewers locations",
+		"data":    locations,
+	})
+}

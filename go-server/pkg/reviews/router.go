@@ -22,6 +22,8 @@ func router(ctx context.Context, app fiber.Router, handler *Handler, middleware 
 
 	app.Get("/flagged/", HandleGetFlaggedReviews(handler, ctx))
 
+	app.Get("/locations/", HandleGetReviewsLocations(handler, ctx))
+
 	app.Get("/:id/", HandleGetReview(handler, ctx))
 
 	app.Get("/game/:gameId/", HandleGetReviewsForGame(handler, ctx))
@@ -53,5 +55,6 @@ func isAdminOrModerator(claims *auth.JwtClaims) (string, bool) {
 }
 
 func allowAllAuthenticated(claims *auth.JwtClaims) (string, bool) {
+	log.Println("allowAllAuthenticated")
 	return "", true
 }

@@ -3,6 +3,7 @@ package reviews
 import (
 	"context"
 	"fmt"
+	"github.com/go-playground/validator/v10"
 	"github.com/gofiber/fiber/v2"
 	"log"
 )
@@ -18,9 +19,10 @@ func NewHandler(service *Service) *Handler {
 }
 
 type AddReviewRequest struct {
-	Rating  int    `json:"rating" validate:"required,number,gte=0,lte2"`
-	Comment string `json:"comment" validate:"required,min=5,max=2000"`
-	GameId  string `json:"gameId" validate:"required"`
+	Rating   int      `json:"rating" validate:"required,number,gte=0,lte2"`
+	Comment  string   `json:"comment" validate:"required,min=5,max=2000"`
+	GameId   string   `json:"gameId" validate:"required"`
+	Location Location `json:"location" validate:"required"`
 }
 
 func (h *Handler) AddReview(ctx context.Context, c *fiber.Ctx) error {
@@ -33,10 +35,11 @@ func (h *Handler) AddReview(ctx context.Context, c *fiber.Ctx) error {
 	}
 	userId := c.Locals("userId").(string)
 	review := &AddReview{
-		Rating:  req.Rating,
-		Comment: req.Comment,
-		GameId:  req.GameId,
-		UserId:  userId,
+		Rating:   req.Rating,
+		Comment:  req.Comment,
+		GameId:   req.GameId,
+		UserId:   userId,
+		Location: req.Location,
 	}
 
 	id, err := h.Service.addReview(ctx, review)
@@ -166,6 +169,46 @@ func (h *Handler) FlagReview(ctx context.Context, c *fiber.Ctx, shouldFlag bool)
 	}
 
 	return FlagReviewSuccessResp(c, shouldFlag)
+
+}
+
+type GetReviewsLocationsRequest struct {
+	Type  string `json:"type" bson:"type" validate:"oneof=day week month"`
+	Value int    `json:"value" bson:"value" validate:"required,number,gte=1"`
+}
+
+func (h *Handler) GetReviewsLocations(ctx context.Context, c *fiber.Ctx) error {
+	var req GetReviewsLocationsRequest
+
+	err := c.QueryParser(&req)
+
+	if err != nil {
+		return GetLocationErrorResponse(c, ErrBadRequest)
+	}
+
+	if validator.New().Struct(req) != nil {
+		return GetLocationErrorResponse(c, ErrBadRequest)
+	}
+
+	var reqType LocationReqType
+
+	if req.Type == "day" {
+		reqType = Day
+	} else if req.Type == "week" {
+		reqType = Week
+	} else if req.Type == "month" {
+		reqType = Month
+	} else {
+		reqType = Day
+	}
+
+	locations, err := h.Service.getLocation(ctx, reqType, req.Value)
+
+	if err != nil {
+		return GetLocationErrorResponse(c, err)
+	}
+
+	return GetLocationSuccessResp(c, locations)
 
 }
 

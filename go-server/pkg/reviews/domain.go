@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"log"
+	"math"
 	"strings"
 	"sync"
 	"time"
@@ -15,10 +16,11 @@ type Service struct {
 }
 
 type AddReview struct {
-	Rating  int    `json:"rating" validate:"required,number,gte=0,lte2"`
-	Comment string `json:"comment" validate:"required,min=5,max=2000"`
-	GameId  string `json:"gameId" validate:"required"`
-	UserId  string `json:"userId" validate:"required"`
+	Rating   int      `json:"rating" validate:"required,number,gte=0,lte2"`
+	Comment  string   `json:"comment" validate:"required,min=5,max=2000"`
+	GameId   string   `json:"gameId" validate:"required"`
+	UserId   string   `json:"userId" validate:"required"`
+	Location Location `json:"location" validate:"required"`
 }
 
 type ReviewResponse struct {
@@ -59,7 +61,7 @@ type User struct {
 }
 
 type Location struct {
-	City        string  `json:"city" bson:"city"`
+	City        string  `json:"city,omitempty" bson:"city,omitempty"`
 	Country     string  `json:"country" bson:"country"`
 	Latitude    float64 `json:"latitude" bson:"latitude"`
 	Longitude   float64 `json:"longitude" bson:"longitude"`
@@ -77,6 +79,7 @@ type Review struct {
 	IsFlagged     bool               `json:"isFlagged" bson:"isFlagged"`
 	Votes         int                `json:"votes"`
 	UserId        string             `json:"userId"bson:"userId"`
+	Location      Location           `json:"location" bson:"location"`
 }
 
 type PaginatedResponseType interface {
@@ -108,6 +111,7 @@ type Repository interface {
 	GetVote(ctx context.Context, userId string, gameId string) (*Vote, error)
 	GetFlaggedReviews(ctx context.Context, gameId string, limit int, offset int) (*PaginatedResponse[Review], error)
 	UpdateReviewStats(ctx context.Context, id string, rating int, ratingCount int) error
+	getReviewersForTimeAgo(ctx context.Context, ago time.Time) (*[]Review, error)
 }
 
 func NewService(r Repository) *Service {
@@ -433,6 +437,149 @@ func (s *Service) updateReviewStats(ctx context.Context, gameId string, rating i
 	log.Println("Updating review stats for game: " + gameId)
 	return s.repository.UpdateReviewStats(ctx, gameId, rating, ratingCount)
 
+}
+
+type LocationReqType int
+
+const (
+	Day LocationReqType = iota
+	Week
+	Month
+)
+
+type LatLng struct {
+	Lat float64 `json:"lat"`
+	Lng float64 `json:"lng"`
+}
+
+type UserWithCount struct {
+	UserId   string   `json:"id" bson:"_id"`
+	Count    int      `json:"count" bson:"count"`
+	Location Location `json:"location" bson:"location"`
+}
+
+func (s *Service) getLocation(ctx context.Context, reqType LocationReqType, value int) ([]LocationWithCount, error) {
+	log.Println("inside 1")
+	timeAgo := getTimeAgoFromReqType(reqType, value)
+
+	reviews, err := s.repository.getReviewersForTimeAgo(ctx, timeAgo)
+
+	log.Println("inside 2")
+
+	if err != nil {
+		return nil, err
+	}
+
+	reviewLocations, err := sortUserLocationProximity(reviews)
+
+	log.Println("inside 3")
+
+	if err != nil {
+		return nil, err
+	}
+
+	return *reviewLocations, nil
+}
+
+type LocationWithCount struct {
+	Location LatLng `json:"location"`
+	Count    int    `json:"count"`
+}
+
+func sortUserLocationProximity(reviews *[]Review) (*[]LocationWithCount, error) {
+	log.Println("sort user location proximity")
+	proximityInKm := 0.1
+
+	locationsWithCount := make([]LocationWithCount, 0)
+
+	checkedIndexesMap := make(map[int]bool)
+
+	for i, review := range *reviews {
+
+		log.Println("checking ", i)
+
+		if checkedIndexesMap[i] {
+			log.Println("already checked")
+			continue
+		}
+
+		latLng := LatLng{
+			Lat: review.Location.Latitude,
+			Lng: review.Location.Longitude,
+		}
+
+		currentLoc := LocationWithCount{
+			Location: latLng,
+			Count:    1,
+		}
+
+		// print current location
+		log.Println("current location: ", currentLoc)
+
+		for j := i + 1; j < len(*reviews); j++ {
+
+			log.Println("checking ", j)
+
+			if checkedIndexesMap[j] {
+				log.Println(j, " already checked")
+				continue
+			}
+
+			thisLoc := LocationWithCount{
+				Location: LatLng{
+					Lat: (*reviews)[j].Location.Latitude,
+					Lng: (*reviews)[j].Location.Longitude,
+				},
+				Count: 1,
+			}
+
+			if isLocationClose(currentLoc.Location, thisLoc.Location, proximityInKm) {
+				currentLoc.Count++
+				checkedIndexesMap[j] = true
+			}
+		}
+
+		locationsWithCount = append(locationsWithCount, currentLoc)
+	}
+
+	log.Println("sort user location proximity 2")
+	return &locationsWithCount, nil
+}
+
+func distance(lat1 float64, lon1 float64, lat2 float64, lon2 float64) float64 {
+	R := 6371000.0 // metres
+
+	a := 0.5 - math.Cos((lat2-lat1)*math.Pi/180)/2 + math.Cos(lat1*math.Pi/180)*math.Cos(lat2*math.Pi/180)*(1-math.Cos((lon2-lon1)*math.Pi/180))/2
+
+	return R * 2.0 * math.Asin(math.Sqrt(a))
+
+}
+
+func isLocationClose(location1 LatLng, location2 LatLng, proximityInKm float64) bool {
+	log.Println("is location close")
+
+	// check if location is close
+	distance := distance(location1.Lat, location1.Lng, location2.Lat, location2.Lng)
+
+	log.Println("distance: ", distance)
+
+	return distance < float64(proximityInKm*1000)
+}
+
+func getTimeAgoFromReqType(reqType LocationReqType, value int) time.Time {
+	if value == 0 {
+		value = 1
+	}
+	switch reqType {
+	case Day:
+		return time.Now().AddDate(0, 0, -value)
+	case Week:
+		return time.Now().AddDate(0, 0, -value*7)
+	case Month:
+		return time.Now().AddDate(0, -value, 0)
+	default:
+		return time.Now().AddDate(0, 0, -value)
+	}
 }
 
 func getReviewFromAddReview(r *AddReview) Review {
